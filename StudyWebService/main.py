@@ -1,3 +1,5 @@
+import math
+from enum import Enum
 from typing import Union
 from peewee import MySQLDatabase
 from peewee import Model, CharField, IntegerField, ForeignKeyField, CompositeKey
@@ -5,6 +7,7 @@ from playhouse.shortcuts import model_to_dict
 
 from fastapi import FastAPI, HTTPException, Request, Body, Response
 from typing import Optional
+from re import match
 
 import json
 
@@ -13,6 +16,8 @@ db = MySQLDatabase(database='pos', user='posadmin', passwd='passwdpos', host='lo
 app = FastAPI()
 
 db.connect()
+
+email_regex = "^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$"
 
 class BaseModel(Model):
     class Meta:
@@ -31,6 +36,7 @@ class Teacher(BaseModel):
     class Meta:
         db_table = 'profesor'
 
+
 class Student(BaseModel):
     id = IntegerField(primary_key=True)
     nume = CharField()
@@ -42,6 +48,7 @@ class Student(BaseModel):
 
     class Meta:
         db_table = 'student'
+
 
 class Lecture(BaseModel):
     cod = CharField(primary_key=True)
@@ -55,6 +62,7 @@ class Lecture(BaseModel):
     class Meta:
         db_table = 'disciplina'
 
+
 class Student_Disciplina(BaseModel):
     DisciplinaID = CharField(primary_key=True)
     StudentID = IntegerField()
@@ -62,9 +70,47 @@ class Student_Disciplina(BaseModel):
     class Meta:
         db_table = 'join_ds'
 
+
+class TeacherDegree(Enum):
+    ASIST = "asist"
+    SEF_LUCR = "sef lucr"
+    CONF = "conf"
+    PROF = "prof"
+
+
+class TeacherAssociation(Enum):
+    TITULAR = "titular"
+    ASOCIAT = "asociat"
+    EXTERN = "extern"
+
+
+class StudentCycle(Enum):
+    LICENTA = "licenta"
+    MASTER = "master"
+
+
+class LectureType(Enum):
+     IMPUSA = "impusa"
+     OPTIONALA = "optionala"
+     LIBER_ALEASA = "liber_aleasa"
+
+
+class LectureCategory(Enum):
+    DOMENIU = "domeniu"
+    SPECIALITATE = "specialitate"
+    ADIACENTA = "adiacenta"
+
+
+class LectureExamination(Enum):
+    COLOCVIU = "colocviu"
+    EXAMEN = "examen"
+
+
 @app.get("/")
 def read_root():
     return {"Hello": "World"}
+
+# TEACHERS
 
 
 @app.get("/api/academia/teachers")
@@ -98,12 +144,10 @@ def read_teachers(
     end_index = start_index + items_per_page
 
     if start_index >= total_teachers:
-        pass
-        # pagina nu exista
+        raise HTTPException(status_code=416, detail={"max_page": math.ceil(total_teachers / items_per_page),
+                                                      "items_per_page": items_per_page})
 
     res = res.limit(items_per_page).offset(start_index)
-
-    print(res)
 
     teachers = []
     for teacher in res:
@@ -167,8 +211,8 @@ def read_item(
     end_index = start_index + items_per_page
 
     if start_index >= total_items:
-        pass
-        # pagina nu exista
+        raise HTTPException(status_code=416, detail={"max_page": math.ceil(total_items / items_per_page),
+                                                      "items_per_page": items_per_page})
 
     teacher_lectures_res = teacher_lectures_res.limit(items_per_page).offset(start_index)
 
@@ -192,22 +236,28 @@ def read_item(
     }
 
 
-@app.post("/api/academia/teachers/add")
+@app.post("/api/academia/teachers/", status_code=204)
 def add_teacher(
+        response: Response,
         firstName: str = Body(...),
         lastName: str = Body(...),
         email: str = Body(...),
-        teachingDegree: str = Body(...),
-        associationType: str = Body(...),
+        teachingDegree: TeacherDegree = Body(...),
+        associationType: TeacherAssociation = Body(...),
         affiliation: str = Body(...)
 ):
     try:
+
+        if not match(email_regex, email):
+            response.status_code = 422
+            return {"error": "Invalid email"}
+
         res = Teacher.insert({
             "nume": firstName,
             "prenume": lastName,
             "email": email,
-            "grad_didactic": teachingDegree,
-            "tip_asociere": associationType,
+            "grad_didactic": teachingDegree.value,
+            "tip_asociere": associationType.value,
             "afiliere": affiliation
         }).execute()
         return {"status": "success", "data": {"teacher_id": res}}
@@ -222,10 +272,13 @@ def update_teacher(
         firstName: str = Body(...),
         lastName: str = Body(...),
         email: str = Body(...),
-        teachingDegree: str = Body(...),
-        associationType: str = Body(...),
+        teachingDegree: TeacherDegree = Body(...),
+        associationType: TeacherAssociation = Body(...),
         affiliation: str = Body(...)
 ):
+    if not match(email_regex, email):
+        response.status_code = 422
+        return {"error": "Invalid email"}
 
     if not Teacher.get_or_none(Teacher.id == teacher_id):
         response.status_code = 201
@@ -233,8 +286,8 @@ def update_teacher(
             "nume": firstName,
             "prenume": lastName,
             "email": email,
-            "grad_didactic": teachingDegree,
-            "tip_asociere": associationType,
+            "grad_didactic": teachingDegree.value,
+            "tip_asociere": associationType.value,
             "afiliere": affiliation
         }).execute()
         return {"status": "success", "data": {"teacher_id": res}}
@@ -244,8 +297,8 @@ def update_teacher(
             "nume": firstName,
             "prenume": lastName,
             "email": email,
-            "grad_didactic": teachingDegree,
-            "tip_asociere": associationType,
+            "grad_didactic": teachingDegree.value,
+            "tip_asociere": associationType.value,
             "afiliere": affiliation
         }).where(Teacher.id == teacher_id).execute()
 
@@ -277,6 +330,8 @@ def delete_teacher(
         "status": "success",
         "teacher": {**model_to_dict(copy)}
     }
+# STUDENTS
+
 
 @app.get("/api/academia/students")
 def read_students(
@@ -313,8 +368,8 @@ def read_students(
     end_index = start_index + items_per_page
 
     if start_index >= total_items:
-        pass
-        # pagina nu exista
+        raise HTTPException(status_code=416, detail={"max_page": math.ceil(total_items / items_per_page),
+                                                      "items_per_page": items_per_page})
 
     res = res.limit(items_per_page).offset(start_index)
 
@@ -378,8 +433,8 @@ def read_item(
     end_index = start_index + items_per_page
 
     if start_index >= total_items:
-        pass
-        # pagina nu exista
+        raise HTTPException(status_code=416, detail={"max_page": math.ceil(total_items / items_per_page),
+                                                      "items_per_page": items_per_page})
 
     student_lectures_res = student_lectures_res.limit(items_per_page).offset(start_index)
 
@@ -403,21 +458,27 @@ def read_item(
         }
     }
 
-@app.post("/api/academia/students/add")
+@app.post("/api/academia/students/", status_code=204)
 def add_student(
+        response: Response,
         first_name: str = Body(...),
         last_name: str = Body(...),
         email: str = Body(...),
-        study_cycle: str = Body(...),
+        study_cycle: StudentCycle = Body(...),
         study_year: int = Body(...),
         group: int = Body(...)
 ):
     try:
+
+        if not match(email_regex, email):
+            response.status_code = 422
+            return {"error": "Invalid email"}
+
         res = Student.insert({
             "nume": last_name,
             "prenume": first_name,
             "email": email,
-            "ciclu_studii": study_cycle,
+            "ciclu_studii": study_cycle.value,
             "an_studiu": study_year,
             "grupa": group
         }).execute()
@@ -433,10 +494,13 @@ def update_student(
         first_name: str = Body(...),
         last_name: str = Body(...),
         email: str = Body(...),
-        study_cycle: str = Body(...),
+        study_cycle: StudentCycle = Body(...),
         study_year: int = Body(...),
         group: int = Body(...)
 ):
+    if not match(email_regex, email):
+        response.status_code = 422
+        return {"error": "Invalid email"}
 
     if not Student.get(Student.id == student_id):
         response.status_code = 201
@@ -444,7 +508,7 @@ def update_student(
             "nume": last_name,
             "prenume": first_name,
             "email": email,
-            "ciclu_studii": study_cycle,
+            "ciclu_studii": study_cycle.value,
             "an_studiu": study_year,
             "grupa": group
         }).execute()
@@ -455,7 +519,7 @@ def update_student(
             "nume": last_name,
             "prenume": first_name,
             "email": email,
-            "ciclu_studii": study_cycle,
+            "ciclu_studii": study_cycle.value,
             "an_studiu": study_year,
             "grupa": group
         }).where(Student.id == student_id).execute()
@@ -466,7 +530,6 @@ def update_student(
         return {
             "status": "success",
         }
-
 
 
 @app.delete("/api/academia/students/{student_id}")
@@ -489,6 +552,7 @@ def delete_student(
         "status": "success",
         "student": {**model_to_dict(copy)}
     }
+# LECTURES
 
 
 @app.get("/api/academia/lectures")
@@ -526,8 +590,8 @@ def read_lectures(
     end_index = start_index + items_per_page
 
     if start_index >= total_items:
-        pass
-        # pagina nu exista
+        raise HTTPException(status_code=416, detail={"max_page": math.ceil(total_items / items_per_page),
+                                                      "items_per_page": items_per_page})
 
     res = res.limit(items_per_page).offset(start_index)
 
@@ -547,15 +611,37 @@ def read_lectures(
     return {"lectures": lectures}
 
 
-@app.post("/api/academia/lectures/add")
+@app.get("/api/academia/lectures/{lecture_code}")
+def read_item(lecture_code: str, request: Request):
+    try:
+        lecture = Lecture.select().where(Lecture.cod == lecture_code).get()
+    except:
+        raise HTTPException(status_code=404, detail="Lecture not found")
+
+    return {
+        "lecture": {
+            **model_to_dict(lecture),
+            "_links": {
+                "self": {
+                    "href": request.url.path,
+                },
+                "parent": {
+                    "href": '/'.join(request.url.path.split('/')[:-1])
+                },
+            }
+        }
+    }
+
+
+@app.post("/api/academia/lectures/", status_code=204)
 def add_lecture(
         code: str = Body(...),
         coordinator_id: int = Body(...),
         lecture_name: str = Body(...),
         year: int = Body(...),
-        lecture_type: str = Body(...),
-        category: str = Body(...),
-        examination: str = Body(...)
+        lecture_type: LectureType = Body(...),
+        category: LectureCategory = Body(...),
+        examination: LectureExamination = Body(...)
 ):
     try:
         res = Lecture.insert({
@@ -563,9 +649,9 @@ def add_lecture(
             "id_titular": coordinator_id,
             "nume_disciplina": lecture_name,
             "an_studiu": year,
-            "tip_disciplina": lecture_type,
-            "categorie_disciplina": category,
-            "tip_examinare": examination
+            "tip_disciplina": lecture_type.value,
+            "categorie_disciplina": category.value,
+            "tip_examinare": examination.value
         }).execute()
         return {"status": "success", "data": {"lecture_id": res}}
     except Exception as e:
@@ -579,9 +665,9 @@ def update_lecture(
         coordinator_id: int = Body(...),
         lecture_name: str = Body(...),
         year: int = Body(...),
-        lecture_type: str = Body(...),
-        category: str = Body(...),
-        examination: str = Body(...)
+        lecture_type: LectureType = Body(...),
+        category: LectureCategory = Body(...),
+        examination: LectureExamination = Body(...)
 ):
 
     if not Lecture.get_or_none(Lecture.cod == lecture_code):
@@ -591,9 +677,9 @@ def update_lecture(
             "id_titular": coordinator_id,
             "nume_disciplina": lecture_name,
             "an_studiu": year,
-            "tip_disciplina": lecture_type,
-            "categorie_disciplina": category,
-            "tip_examinare": examination
+            "tip_disciplina": lecture_type.value,
+            "categorie_disciplina": category.value,
+            "tip_examinare": examination.value
         }).execute()
         return {"status": "success", "data": {"lecture_id": res}}
     else:
@@ -602,9 +688,9 @@ def update_lecture(
             "id_titular": coordinator_id,
             "nume_disciplina": lecture_name,
             "an_studiu": year,
-            "tip_disciplina": lecture_type,
-            "categorie_disciplina": category,
-            "tip_examinare": examination
+            "tip_disciplina": lecture_type.value,
+            "categorie_disciplina": category.value,
+            "tip_examinare": examination.value
         }).where(Lecture.cod == lecture_code).execute()
 
         if res != 1:
