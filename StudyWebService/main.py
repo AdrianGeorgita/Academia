@@ -8,6 +8,7 @@ from playhouse.shortcuts import model_to_dict
 from fastapi import FastAPI, HTTPException, Request, Body, Response
 from typing import Optional
 from re import match
+import requests
 
 import json
 
@@ -18,6 +19,7 @@ app = FastAPI()
 db.connect()
 
 email_regex = "^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$"
+
 
 class BaseModel(Model):
     class Meta:
@@ -234,6 +236,109 @@ def read_item(
             }
         }
     }
+
+
+@app.get("/api/academia/teachers/{teacher_id}/lectures/{lecture_code}")
+def read_item(
+        teacher_id: int,
+        lecture_code: str,
+        request: Request,
+):
+    try:
+        teacher = Teacher.select().where(Teacher.id == teacher_id).get()
+    except:
+        raise HTTPException(status_code=404, detail="Teacher not found")
+
+    teacher_lecture = Lecture.select().where((Lecture.id_titular == teacher.id) & (Lecture.cod == lecture_code))
+
+    if teacher_lecture.count() != 1:
+        raise HTTPException(status_code=404, detail=f"Lecture not Found or teacher not assigned to the lecture!")
+
+    teacher_lecture = teacher_lecture.get()
+
+    url = f"http://127.0.0.1:8004/api/academia/materials/{teacher_lecture.nume_disciplina}"
+    response = requests.get(url)
+
+    if response.status_code == 200:
+        data = response.json()
+
+        return {
+            "lecture": {**model_to_dict(teacher_lecture)},
+            "materials": data,
+            "_links": {
+                "self": {
+                    "href": request.url.path,
+                },
+                "parent": {
+                    "href": '/'.join(request.url.path.split('/')[:-1])
+                }
+            }
+        }
+
+    else:
+        raise HTTPException(status_code=response.status_code, detail=f"Failed to get materials for the lecture!")
+
+
+@app.put("/api/academia/teachers/{teacher_id}/lectures/{lecture_code}", status_code=204)
+def update_lecture_materials(
+        teacher_id: int,
+        lecture_code: str,
+        request: Request,
+        materials: dict = Body(...),
+):
+
+    teacher = Teacher.select().where(Teacher.id == teacher_id).get()
+    if not teacher:
+        raise HTTPException(status_code=404, detail="Teacher not found")
+
+    teacher_lecture = Lecture.select().where((Lecture.id_titular == teacher.id) & (Lecture.cod == lecture_code))
+
+    if teacher_lecture.count() != 1:
+        raise HTTPException(status_code=404, detail=f"Lecture not Found or teacher not assigned to the lecture!")
+
+    teacher_lecture = teacher_lecture.get()
+
+    url = f"http://127.0.0.1:8004/api/academia/materials/{teacher_lecture.nume_disciplina}"
+    headers = {"Content-Type": 'application/json'}
+    response = requests.put(url, json=materials, headers=headers)
+
+    if response.status_code == 204:
+        return {
+            "data": "Successfully updated the lecture materials!"
+        }
+    else:
+        raise HTTPException(status_code=response.status_code, detail=f"Failed to update the materials for the lecture!")
+
+
+@app.post("/api/academia/teachers/{teacher_id}/lectures/{lecture_code}", status_code=204)
+def add_lecture_materials(
+        teacher_id: int,
+        lecture_code: str,
+        request: Request,
+        materials: dict = Body(...),
+):
+
+    teacher = Teacher.select().where(Teacher.id == teacher_id).get()
+    if not teacher:
+        raise HTTPException(status_code=404, detail="Teacher not found")
+
+    teacher_lecture = Lecture.select().where((Lecture.id_titular == teacher.id) & (Lecture.cod == lecture_code))
+
+    if teacher_lecture.count() != 1:
+        raise HTTPException(status_code=404, detail=f"Lecture not Found or teacher not assigned to the lecture!")
+
+    teacher_lecture = teacher_lecture.get()
+
+    url = f"http://127.0.0.1:8004/api/academia/materials/{teacher_lecture.nume_disciplina}"
+    headers = {"Content-Type": 'application/json'}
+    response = requests.post(url, json=materials, headers=headers)
+
+    if response.status_code == 204:
+        return {
+            "data": "Successfully added the lecture materials!"
+        }
+    else:
+        raise HTTPException(status_code=response.status_code, detail=f"Failed to add the materials for the lecture!")
 
 
 @app.post("/api/academia/teachers/", status_code=204)
@@ -457,6 +562,51 @@ def read_item(
             }
         }
     }
+
+
+@app.get("/api/academia/students/{student_id}/lectures/{lecture_code}")
+def read_item(
+        student_id: int,
+        lecture_code: str,
+        request: Request,
+):
+    try:
+        student = Student.select().where(Student.id == student_id).get()
+    except:
+        raise HTTPException(status_code=404, detail="Student not found")
+
+    student_lecture_res = Student_Disciplina.select().where((Student_Disciplina.StudentID == student.id) & (Student_Disciplina.DisciplinaID == lecture_code))
+
+    if student_lecture_res.count() != 1:
+        raise HTTPException(status_code=404, detail=f"Student not assigned to the lecture!")
+
+    student_lecture = Lecture.select().where(Lecture.cod == lecture_code).get()
+
+    if not student_lecture:
+        raise HTTPException(status_code=404, detail=f"Lecture not found!")
+
+    url = f"http://127.0.0.1:8004/api/academia/materials/{student_lecture.nume_disciplina}"
+    response = requests.get(url)
+
+    if response.status_code == 200:
+        data = response.json()
+
+        return {
+            "lecture": {**model_to_dict(student_lecture)},
+            "materials": data,
+            "_links": {
+                "self": {
+                    "href": request.url.path,
+                },
+                "parent": {
+                    "href": '/'.join(request.url.path.split('/')[:-1])
+                }
+            }
+        }
+
+    else:
+        raise HTTPException(status_code=response.status_code, detail=f"Failed to get materials for the lecture!")
+
 
 @app.post("/api/academia/students/", status_code=204)
 def add_student(
