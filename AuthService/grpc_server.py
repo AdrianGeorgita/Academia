@@ -31,36 +31,66 @@ class User(BaseModel):
     class Meta:
         db_table = 'utilizator'
 
+class Blacklist(BaseModel):
+    jws = CharField(primary_key=True)
+
+    class Meta:
+        db_table = 'blacklist'
+
+def isBlacklisted(jws: str):
+    res = Blacklist.select().where(Blacklist.jws == jws)
+    if res.count() == 1:
+        return True
+    return False
+
 class AuthenticationService(auth_pb2_grpc.Authentication):
     def Authenticate(self, request, context):
         passwd_hash = hashlib.md5(request.password.encode()).hexdigest()
-        print(passwd_hash)      # for testing
 
         res = User.select().where((User.email == request.username) & (User.parola == passwd_hash))
 
-        jwt_token = None
+        jws = None
         if res.count() == 1:
             payload = {
                 "iss": "URL HERE",     # GET URL of service that requested the token
-                "sub": res.first().ID,
-                "exp": str(round(time.time()) + 43200),     # 12 hours
+                "sub": str(res.first().ID),
+                "exp": round(time.time()) + 43200,     # 12 hours
                 "jti": str(uuid.uuid4()),
                 "role": res.first().rol
             }
 
-            jwt_token = jwt.encode(payload=payload, key=JWT_SECRET, algorithm=JWT_ALGORITHM)
+            jws = jwt.encode(payload=payload, key=JWT_SECRET, algorithm=JWT_ALGORITHM)
 
-        return auth_pb2.AuthenticationResponse(jws=jwt_token)
+        return auth_pb2.AuthenticationResponse(jws=jws)
+
+    def Invalidate(self, request, context):
+        try:
+            Blacklist.insert({
+                "jws": request.jws,
+            }).execute()
+            status = "Invalidated"
+        except Exception as e:
+            print(e)
+            status = "Failed to invalidate\n" + e
+
+        return auth_pb2.InvalidationResponse(status=status)
 
     def Validate(self, request, context):
-        status = "Failed"
-
         encoded_jwt = request.jws
-        decoded_jwt = jwt.decode(encoded_jwt, key=JWT_SECRET, algorithms=JWT_ALGORITHM)
+        status = "Validated"
 
-        print(decoded_jwt)
+        if not isBlacklisted(encoded_jwt):
+            try:
+                payload = jwt.decode(jwt=encoded_jwt, key=JWT_SECRET, algorithms=[JWT_ALGORITHM],
+                                     options={'verify_exp': True})
+                body = '\n{"sub": "' + payload["sub"] + '", "role":"' + payload["role"] + '"}'
+            except Exception as e:
+                body = "\n" + str(e)
+                print(e)
+        else:
+            body = "\nBlacklisted"
 
-        return auth_pb2.ValidationResponse(status=status)
+        return auth_pb2.ValidationResponse(status=status + body)
 
 def serve():
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
