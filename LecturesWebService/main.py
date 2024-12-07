@@ -1,11 +1,14 @@
 import json
 from math import ceil
 
+from typing import Annotated
+
 from fastapi import FastAPI
-from fastapi import Request, HTTPException
+from fastapi import Request, HTTPException, Header
 from bson.json_util import dumps
 import pymongo
 
+import grpc, auth_pb2, auth_pb2_grpc
 
 app = FastAPI()
 
@@ -15,17 +18,61 @@ client = pymongo.MongoClient(mongodb_uri)
 db = client["pos"]
 pos_collection = db["pos"]
 
+def ValidateIdentity(token: str):
+    if not token.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Authorization header invalid or not present")
+    else:
+        jws = token.split("Bearer ")[1]
+
+        with grpc.insecure_channel("localhost:50051") as channel:
+            stub = auth_pb2_grpc.AuthenticationStub(channel)
+            response = stub.Validate(auth_pb2.ValidationRequest(jws=jws))
+
+        res_split = response.status.split('\n')
+
+        if res_split[0] == "Success":
+            if res_split[1] == "Valid Token":
+                res_json = json.loads(res_split[2])
+                return res_json["role"], res_json["sub"]
+            else:
+                raise HTTPException(status_code=401, detail=res_split[1])
+        else:
+            raise HTTPException(status_code=401, detail=res_split[1])
+
+
+default_responses = {
+    401: {"description": "Unauthorized"},
+    403: {"description": "Forbidden"},
+    500: {"description": "Internal Server Error"},
+}
+
 
 @app.get("/")
 async def root():
     return {"message": "Hello World"}
 
 
-@app.get("/api/academia/materials")
-async def root(
+@app.get("/api/academia/materials", responses=(
+        {
+            **default_responses,
+            416: {
+                "description": "Range Not Satisfiable",
+                "content": {
+                    "application/json": {
+                        "example": {"detail": {"max_page": 1, "items_per_page": 5}}
+                    }
+                }
+            },
+        }
+    )
+)
+async def get_materials(
+        authorization: Annotated[str, Header()],
         page: int = 1,
         items_per_page: int = 10
 ):
+
+    role, uid = ValidateIdentity(authorization)
 
     start_index = (page - 1) * items_per_page
     total_items = pos_collection.count_documents({})
@@ -40,13 +87,19 @@ async def root(
 
 
 @app.get("/api/academia/materials/{course}")
-async def root(course: str):
+async def get_course_materials(course: str, request: Request, authorization: Annotated[str, Header()],):
+
+    role, uid = ValidateIdentity(authorization)
+
     collection = pos_collection.find_one({"disciplina": course})
     materials = json.loads(dumps(collection))
     return materials
 
 @app.post("/api/academia/materials/{course}", status_code=204)
-async def root(course: str, request: Request):
+async def add_course_materials(course: str, request: Request, authorization: Annotated[str, Header()],):
+
+    role, uid = ValidateIdentity(authorization)
+
     body = await request.json()
 
     evaluation = body["probe-evaluare"]
@@ -102,8 +155,16 @@ async def root(course: str, request: Request):
 
     return {"message": "Materials document added"}
 
-@app.put("/api/academia/materials/{course}", status_code=204)
-async def root(course: str, request: Request):
+@app.put("/api/academia/materials/{course}", status_code=204, responses=(
+        {
+            **default_responses,
+            404: {"description": "Not Found"},
+        }
+    )
+)
+async def update_course_materials(course: str, request: Request, authorization: Annotated[str, Header()],):
+
+    role, uid = ValidateIdentity(authorization)
 
     if not pos_collection.find_one({"disciplina": course}):
         raise HTTPException(status_code=404, detail="Course not found")

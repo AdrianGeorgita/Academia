@@ -1,13 +1,12 @@
 import math, json
 from enum import Enum
-from typing import Union
+from typing import Union, Annotated
 
-from fastapi.security import OAuth2PasswordBearer
 from peewee import MySQLDatabase
-from peewee import Model, CharField, IntegerField, ForeignKeyField, CompositeKey
+from peewee import Model, CharField, IntegerField
 from playhouse.shortcuts import model_to_dict
 
-from fastapi import FastAPI, HTTPException, Request, Body, Response
+from fastapi import FastAPI, HTTPException, Request, Body, Response, Header
 from fastapi.openapi.utils import get_openapi
 from re import match
 import requests
@@ -109,12 +108,11 @@ class LectureExamination(Enum):
     EXAMEN = "examen"
 
 
-def ValidateIdentity(request: Request):
-    headers = request.headers
-    if "Authorization" not in headers or not headers["Authorization"].startswith("Bearer "):
+def ValidateIdentity(token: str):
+    if not token.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Authorization header invalid or not present")
-    elif headers["Authorization"].startswith("Bearer "):
-        jws = headers["Authorization"].split("Bearer ")[1]
+    else:
+        jws = token.split("Bearer ")[1]
 
         with grpc.insecure_channel("localhost:50051") as channel:
             stub = auth_pb2_grpc.AuthenticationStub(channel)
@@ -150,6 +148,12 @@ def custom_openapi():
 
 app.openapi = custom_openapi
 
+default_responses = {
+    401: {"description": "Unauthorized"},
+    403: {"description": "Forbidden"},
+    500: {"description": "Internal Server Error"},
+}
+
 
 @app.get("/")
 def read_root():
@@ -158,9 +162,26 @@ def read_root():
 # TEACHERS
 
 
-@app.get("/api/academia/teachers")
+@app.get("/api/academia/teachers", responses=(
+        {
+            **default_responses,
+            416: {
+                "description": "Range Not Satisfiable",
+                "content": {
+                    "application/json": {
+                        "example": {"detail": {"max_page": 1, "items_per_page": 5}}
+                    }
+                }
+            }
+        }
+    )
+)
+
+
 def read_teachers(
-        request: Request, name: Union[str, None] = None,
+        request: Request,
+        authorization: Annotated[str, Header()],
+        name: Union[str, None] = None,
         teachingDegree: Union[str, None] = None,
         associationType: Union[str, None] = None,
         affiliation: Union[str, None] = None,
@@ -169,7 +190,7 @@ def read_teachers(
         page: int = 1,
         items_per_page: int = 10,
 ):
-    role, user_id = ValidateIdentity(request)
+    role, user_id = ValidateIdentity(authorization)
     if role not in ["admin"]:
         raise HTTPException(status_code=403, detail="You aren't authorized to access this resource")
 
@@ -216,14 +237,20 @@ def read_teachers(
     return {"teachers": teachers}
 
 
-@app.get("/api/academia/teachers/{teacher_id}")
-def read_item(teacher_id: int, request: Request, q: Union[str, None] = None):
+@app.get("/api/academia/teachers/{teacher_id}", responses=(
+        {
+            **default_responses,
+            404: {"description": "Not Found"},
+        }
+    )
+)
+def read_teacher(teacher_id: int, request: Request, authorization: Annotated[str, Header()]):
     try:
         teacher = Teacher.select().where(Teacher.id == teacher_id).get()
     except:
         raise HTTPException(status_code=404, detail="Teacher not found")
 
-    role, user_id = ValidateIdentity(request)
+    role, user_id = ValidateIdentity(authorization)
     if (role not in ["profesor"]) or (teacher_id != int(user_id)):
         raise HTTPException(status_code=403, detail="You aren't authorized to access this resource")
 
@@ -245,14 +272,29 @@ def read_item(teacher_id: int, request: Request, q: Union[str, None] = None):
     }
 
 
-@app.get("/api/academia/teachers/{teacher_id}/lectures")
+@app.get("/api/academia/teachers/{teacher_id}/lectures", responses=(
+        {
+            **default_responses,
+            404: {"description": "Not Found"},
+            416: {
+                "description": "Range Not Satisfiable",
+                "content": {
+                    "application/json": {
+                        "example": {"detail": {"max_page": 1, "items_per_page": 5}}
+                    }
+                }
+            }
+        }
+    )
+)
 def read_teacher_lectures(
         teacher_id: int,
         request: Request,
+        authorization: Annotated[str, Header()],
         page: int = 1,
         items_per_page: int = 10,
 ):
-    role, user_id = ValidateIdentity(request)
+    role, user_id = ValidateIdentity(authorization)
     if (role not in ["profesor"]) or (teacher_id != int(user_id)):
         raise HTTPException(status_code=403, detail="You aren't authorized to access this resource")
 
@@ -293,14 +335,21 @@ def read_teacher_lectures(
     }
 
 
-@app.get("/api/academia/teachers/{teacher_id}/lectures/{lecture_code}")
-def read_item(
+@app.get("/api/academia/teachers/{teacher_id}/lectures/{lecture_code}", responses=(
+        {
+            **default_responses,
+            404: {"description": "Not Found"},
+        }
+    )
+)
+def read_teacher_lecture(
         teacher_id: int,
         lecture_code: str,
         request: Request,
+        authorization: Annotated[str, Header()],
 ):
 
-    role, user_id = ValidateIdentity(request)
+    role, user_id = ValidateIdentity(authorization)
     if (role not in ["profesor"]) or (teacher_id != int(user_id)):
         raise HTTPException(status_code=403, detail="You aren't authorized to access this resource")
 
@@ -317,7 +366,8 @@ def read_item(
     teacher_lecture = teacher_lecture.get()
 
     url = f"http://127.0.0.1:8004/api/academia/materials/{teacher_lecture.nume_disciplina}"
-    response = requests.get(url)
+    headers = {"Authorization": authorization}
+    response = requests.get(url, headers=headers)
 
     if response.status_code == 200:
         data = response.json()
@@ -339,14 +389,21 @@ def read_item(
         raise HTTPException(status_code=response.status_code, detail=f"Failed to get materials for the lecture!")
 
 
-@app.put("/api/academia/teachers/{teacher_id}/lectures/{lecture_code}", status_code=204)
+@app.put("/api/academia/teachers/{teacher_id}/lectures/{lecture_code}", status_code=204, responses=(
+        {
+            **default_responses,
+            404: {"description": "Not Found"},
+        }
+    )
+)
 def update_lecture_materials(
         teacher_id: int,
         lecture_code: str,
         request: Request,
+        authorization: Annotated[str, Header()],
         materials: dict = Body(...),
 ):
-    role, user_id = ValidateIdentity(request)
+    role, user_id = ValidateIdentity(authorization)
     if role == "student" or (role == "profesor" and teacher_id != int(user_id)):
         raise HTTPException(status_code=403, detail="You aren't authorized to update this resource")
 
@@ -362,7 +419,7 @@ def update_lecture_materials(
     teacher_lecture = teacher_lecture.get()
 
     url = f"http://127.0.0.1:8004/api/academia/materials/{teacher_lecture.nume_disciplina}"
-    headers = {"Content-Type": 'application/json'}
+    headers = {"Content-Type": 'application/json', "Authorization": authorization}
     response = requests.put(url, json=materials, headers=headers)
 
     if response.status_code == 204:
@@ -373,14 +430,21 @@ def update_lecture_materials(
         raise HTTPException(status_code=response.status_code, detail=f"Failed to update the materials for the lecture!")
 
 
-@app.post("/api/academia/teachers/{teacher_id}/lectures/{lecture_code}", status_code=204)
+@app.post("/api/academia/teachers/{teacher_id}/lectures/{lecture_code}", status_code=204, responses=(
+        {
+            **default_responses,
+            404: {"description": "Not Found"},
+        }
+    )
+)
 def add_lecture_materials(
         teacher_id: int,
         lecture_code: str,
         request: Request,
+        authorization: Annotated[str, Header()],
         materials: dict = Body(...),
 ):
-    role, user_id = ValidateIdentity(request)
+    role, user_id = ValidateIdentity(authorization)
     if role == "student" or (role == "profesor" and teacher_id != int(user_id)):
         raise HTTPException(status_code=403, detail="You aren't authorized to post this resource")
 
@@ -396,7 +460,7 @@ def add_lecture_materials(
     teacher_lecture = teacher_lecture.get()
 
     url = f"http://127.0.0.1:8004/api/academia/materials/{teacher_lecture.nume_disciplina}"
-    headers = {"Content-Type": 'application/json'}
+    headers = {"Content-Type": 'application/json', "Authorization": authorization}
     response = requests.post(url, json=materials, headers=headers)
 
     if response.status_code == 204:
@@ -407,10 +471,15 @@ def add_lecture_materials(
         raise HTTPException(status_code=response.status_code, detail=f"Failed to add the materials for the lecture!")
 
 
-@app.post("/api/academia/teachers/", status_code=204)
+@app.post("/api/academia/teachers/", status_code=204, responses=(
+        {
+            **default_responses,
+        }
+    )
+)
 def add_teacher(
         response: Response,
-        request: Request,
+        authorization: Annotated[str, Header()],
         firstName: str = Body(...),
         lastName: str = Body(...),
         email: str = Body(...),
@@ -418,7 +487,7 @@ def add_teacher(
         associationType: TeacherAssociation = Body(...),
         affiliation: str = Body(...)
 ):
-    role, user_id = ValidateIdentity(request)
+    role, user_id = ValidateIdentity(authorization)
     if role != "admin":
         raise HTTPException(status_code=403, detail="You aren't authorized to post this resource")
 
@@ -441,11 +510,17 @@ def add_teacher(
         raise HTTPException(status_code=500, detail=f"Error inserting teacher: {e}")
 
 
-@app.put("/api/academia/teachers/{teacher_id}", status_code=204)
+@app.put("/api/academia/teachers/{teacher_id}", status_code=204, responses=(
+        {
+            **default_responses,
+            201: {"description": "Created"},
+        }
+    )
+)
 def update_teacher(
         teacher_id: int,
         response: Response,
-        request: Request,
+        authorization: Annotated[str, Header()],
         firstName: str = Body(...),
         lastName: str = Body(...),
         email: str = Body(...),
@@ -453,7 +528,7 @@ def update_teacher(
         associationType: TeacherAssociation = Body(...),
         affiliation: str = Body(...)
 ):
-    role, user_id = ValidateIdentity(request)
+    role, user_id = ValidateIdentity(authorization)
     if role == "student" or (role == "profesor" and teacher_id != int(user_id)):
         raise HTTPException(status_code=403, detail="You aren't authorized to update this resource")
 
@@ -491,12 +566,18 @@ def update_teacher(
         }
 
 
-@app.delete("/api/academia/teachers/{teacher_id}")
+@app.delete("/api/academia/teachers/{teacher_id}", responses=(
+        {
+            **default_responses,
+            404: {"description": "Not Found"},
+        }
+    )
+)
 def delete_teacher(
         teacher_id: int,
-        request: Request,
+        authorization: Annotated[str, Header()],
 ):
-    role, user_id = ValidateIdentity(request)
+    role, user_id = ValidateIdentity(authorization)
     if role != "admin":
         raise HTTPException(status_code=403, detail="You aren't authorized to delete this resource")
 
@@ -519,9 +600,24 @@ def delete_teacher(
 # STUDENTS
 
 
-@app.get("/api/academia/students")
+@app.get("/api/academia/students", responses=(
+        {
+            **default_responses,
+            404: {"description": "Not Found"},
+            416: {
+                "description": "Range Not Satisfiable",
+                "content": {
+                    "application/json": {
+                        "example": {"detail": {"max_page": 1, "items_per_page": 5}}
+                    }
+                }
+            },
+        }
+    )
+)
 def read_students(
         request: Request,
+        authorization: Annotated[str, Header()],
         name: Union[str, None] = None,
         surname: Union[str, None] = None,
         degree: Union[str, None] = None,
@@ -532,7 +628,7 @@ def read_students(
         items_per_page: int = 10,
 ):
 
-    role, user_id = ValidateIdentity(request)
+    role, user_id = ValidateIdentity(authorization)
     if role not in ["admin"]:
         raise HTTPException(status_code=403, detail="You aren't authorized to access this resource")
 
@@ -580,10 +676,16 @@ def read_students(
     return {"students": students}
 
 
-@app.get("/api/academia/students/{student_id}")
-def read_item(student_id: int, request: Request):
+@app.get("/api/academia/students/{student_id}", responses=(
+        {
+            **default_responses,
+            404: {"description": "Not Found"},
+        }
+    )
+)
+def read_student(student_id: int, request: Request, authorization: Annotated[str, Header()]):
 
-    role, user_id = ValidateIdentity(request)
+    role, user_id = ValidateIdentity(authorization)
     if (role not in ["admin"]) and (student_id != int(user_id)):
         raise HTTPException(status_code=403, detail="You aren't authorized to access this resource")
 
@@ -610,15 +712,30 @@ def read_item(student_id: int, request: Request):
     }
 
 
-@app.get("/api/academia/students/{student_id}/lectures")
-def read_item(
+@app.get("/api/academia/students/{student_id}/lectures", responses=(
+        {
+            **default_responses,
+            404: {"description": "Not Found"},
+            416: {
+                "description": "Range Not Satisfiable",
+                "content": {
+                    "application/json": {
+                        "example": {"detail": {"max_page": 1, "items_per_page": 5}}
+                    }
+                }
+            },
+        }
+    )
+)
+def read_student_lectures(
         student_id: int,
         request: Request,
+        authorization: Annotated[str, Header()],
         page: int = 1,
         items_per_page: int = 10,
 ):
 
-    role, user_id = ValidateIdentity(request)
+    role, user_id = ValidateIdentity(authorization)
     if (role != "student") or (student_id != int(user_id)):
         raise HTTPException(status_code=403, detail="You aren't authorized to access this resource")
 
@@ -660,14 +777,21 @@ def read_item(
     }
 
 
-@app.get("/api/academia/students/{student_id}/lectures/{lecture_code}")
-def read_item(
+@app.get("/api/academia/students/{student_id}/lectures/{lecture_code}", responses=(
+        {
+            **default_responses,
+            404: {"description": "Not Found"},
+        }
+    )
+)
+def read_student_lecture(
         student_id: int,
         lecture_code: str,
         request: Request,
+        authorization: Annotated[str, Header()],
 ):
 
-    role, user_id = ValidateIdentity(request)
+    role, user_id = ValidateIdentity(authorization)
     if (role != "student") or (student_id != int(user_id)):
         raise HTTPException(status_code=403, detail="You aren't authorized to access this resource")
 
@@ -687,6 +811,7 @@ def read_item(
         raise HTTPException(status_code=404, detail=f"Lecture not found!")
 
     url = f"http://127.0.0.1:8004/api/academia/materials/{student_lecture.nume_disciplina}"
+    headers = {"Authorization": authorization}
     response = requests.get(url)
 
     if response.status_code == 200:
@@ -709,10 +834,15 @@ def read_item(
         raise HTTPException(status_code=response.status_code, detail=f"Failed to get materials for the lecture!")
 
 
-@app.post("/api/academia/students/", status_code=204)
+@app.post("/api/academia/students/", status_code=204, responses=(
+        {
+            **default_responses,
+        }
+    )
+)
 def add_student(
         response: Response,
-        request: Request,
+        authorization: Annotated[str, Header()],
         first_name: str = Body(...),
         last_name: str = Body(...),
         email: str = Body(...),
@@ -720,7 +850,7 @@ def add_student(
         study_year: int = Body(...),
         group: int = Body(...)
 ):
-    role, user_id = ValidateIdentity(request)
+    role, user_id = ValidateIdentity(authorization)
     if role != "admin":
         raise HTTPException(status_code=403, detail="You aren't authorized to post this resource")
 
@@ -743,11 +873,17 @@ def add_student(
         raise HTTPException(status_code=500, detail=f"Error inserting student: {e}")
 
 
-@app.put("/api/academia/students/{student_id}", status_code=204)
+@app.put("/api/academia/students/{student_id}", status_code=204, responses=(
+        {
+            **default_responses,
+            201: {"description": "Created"},
+        }
+    )
+)
 def update_student(
         student_id: int,
         response: Response,
-        request: Request,
+        authorization: Annotated[str, Header()],
         first_name: str = Body(...),
         last_name: str = Body(...),
         email: str = Body(...),
@@ -755,7 +891,7 @@ def update_student(
         study_year: int = Body(...),
         group: int = Body(...)
 ):
-    role, user_id = ValidateIdentity(request)
+    role, user_id = ValidateIdentity(authorization)
     if (role != "admin") and (student_id != int(user_id)):
         raise HTTPException(status_code=403, detail="You aren't authorized to update this resource")
 
@@ -793,12 +929,18 @@ def update_student(
         }
 
 
-@app.delete("/api/academia/students/{student_id}")
+@app.delete("/api/academia/students/{student_id}", responses=(
+        {
+            **default_responses,
+            404: {"description": "Not Found"},
+        }
+    )
+)
 def delete_student(
-        request: Request,
+        authorization: Annotated[str, Header()],
         student_id: int,
 ):
-    role, user_id = ValidateIdentity(request)
+    role, user_id = ValidateIdentity(authorization)
     if role != "admin":
         raise HTTPException(status_code=403, detail="You aren't authorized to delete this resource")
 
@@ -821,9 +963,24 @@ def delete_student(
 # LECTURES
 
 
-@app.get("/api/academia/lectures")
+@app.get("/api/academia/lectures", responses=(
+        {
+            **default_responses,
+            404: {"description": "Not Found"},
+            416: {
+                "description": "Range Not Satisfiable",
+                "content": {
+                    "application/json": {
+                        "example": {"detail": {"max_page": 1, "items_per_page": 5}}
+                    }
+                }
+            },
+        }
+    )
+)
 def read_lectures(
         request: Request,
+        authorization: Annotated[str, Header()],
         coordinator: Union[str, None] = None,
         name: Union[str, None] = None,
         year: Union[str, None] = None,
@@ -834,7 +991,7 @@ def read_lectures(
         items_per_page: int = 10,
 ):
 
-    role, user_id = ValidateIdentity(request)
+    role, user_id = ValidateIdentity(authorization)
     if role not in ["profesor"]:
         raise HTTPException(status_code=403, detail="You aren't authorized to access this resource")
 
@@ -882,10 +1039,16 @@ def read_lectures(
     return {"lectures": lectures}
 
 
-@app.get("/api/academia/lectures/{lecture_code}")
-def read_item(lecture_code: str, request: Request):
+@app.get("/api/academia/lectures/{lecture_code}", responses=(
+        {
+            **default_responses,
+            404: {"description": "Not Found"},
+        }
+    )
+)
+def read_lecture(lecture_code: str, request: Request, authorization: Annotated[str, Header()]):
 
-    role, user_id = ValidateIdentity(request)
+    role, user_id = ValidateIdentity(authorization)
     if role not in ["profesor"]:
         raise HTTPException(status_code=403, detail="You aren't authorized to access this resource")
 
@@ -909,9 +1072,14 @@ def read_item(lecture_code: str, request: Request):
     }
 
 
-@app.post("/api/academia/lectures/", status_code=204)
+@app.post("/api/academia/lectures/", status_code=204, responses=(
+        {
+            **default_responses,
+        }
+    )
+)
 def add_lecture(
-        request: Request,
+        authorization: Annotated[str, Header()],
         code: str = Body(...),
         coordinator_id: int = Body(...),
         lecture_name: str = Body(...),
@@ -920,7 +1088,7 @@ def add_lecture(
         category: LectureCategory = Body(...),
         examination: LectureExamination = Body(...)
 ):
-    role, user_id = ValidateIdentity(request)
+    role, user_id = ValidateIdentity(authorization)
     if role not in ["admin"]:
         raise HTTPException(status_code=403, detail="You aren't authorized to post this resource")
 
@@ -939,11 +1107,17 @@ def add_lecture(
         raise HTTPException(status_code=500, detail=f"Error inserting lecture: {e}")
 
 
-@app.put("/api/academia/lectures/{lecture_code}", status_code=204)
+@app.put("/api/academia/lectures/{lecture_code}", status_code=204, responses=(
+        {
+            **default_responses,
+            201: {"description": "Created"},
+        }
+    )
+)
 def update_lecture(
         lecture_code: str,
         response: Response,
-        request: Request,
+        authorization: Annotated[str, Header()],
         coordinator_id: int = Body(...),
         lecture_name: str = Body(...),
         year: int = Body(...),
@@ -951,7 +1125,7 @@ def update_lecture(
         category: LectureCategory = Body(...),
         examination: LectureExamination = Body(...)
 ):
-    role, user_id = ValidateIdentity(request)
+    role, user_id = ValidateIdentity(authorization)
     if role != "admin" and (role == "profesor" and user_id != coordinator_id):
         raise HTTPException(status_code=403, detail="You aren't authorized to update this resource")
 
@@ -986,12 +1160,18 @@ def update_lecture(
         }
 
 
-@app.delete("/api/academia/lectures/{lecture_code}")
+@app.delete("/api/academia/lectures/{lecture_code}", responses=(
+        {
+            **default_responses,
+            404: {"description": "Not Found"},
+        }
+    )
+)
 def delete_lecture(
-        request: Request,
+        authorization: Annotated[str, Header()],
         lecture_code: str,
 ):
-    role, user_id = ValidateIdentity(request)
+    role, user_id = ValidateIdentity(authorization)
     if role not in ["admin"]:
         raise HTTPException(status_code=403, detail="You aren't authorized to delete this resource")
 
