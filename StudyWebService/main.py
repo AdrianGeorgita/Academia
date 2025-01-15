@@ -11,9 +11,10 @@ from fastapi.openapi.utils import get_openapi
 from re import match
 import requests
 
-import grpc, auth_pb2_grpc, auth_pb2
+import grpc
+import auth_pb2, auth_pb2_grpc
 
-db = MySQLDatabase(database='pos', user='posadmin', passwd='passwdpos', host='localhost', port=3306)
+db = MySQLDatabase(database='study_service_db', user='posadmin', passwd='passwdpos', host='study_db', port=3306)
 
 app = FastAPI()
 
@@ -114,7 +115,7 @@ def ValidateIdentity(token: str):
     else:
         jws = token.split("Bearer ")[1]
 
-        with grpc.insecure_channel("localhost:50051") as channel:
+        with grpc.insecure_channel("auth_service:50051") as channel:
             stub = auth_pb2_grpc.AuthenticationStub(channel)
             response = stub.Validate(auth_pb2.ValidationRequest(jws=jws))
 
@@ -229,8 +230,6 @@ def read_teachers(
             "parent": {
                 "href": '/'.join(request.url.path.split('/')[:-1])
             },
-            "page": page,
-            "items_per_page": items_per_page,
         }
         teachers.append(teacher_dict)
 
@@ -365,7 +364,7 @@ def read_teacher_lecture(
 
     teacher_lecture = teacher_lecture.get()
 
-    url = f"http://127.0.0.1:8004/api/academia/materials/{teacher_lecture.nume_disciplina}"
+    url = f"http://lectures_web_service:8004/api/academia/materials/{teacher_lecture.nume_disciplina}"
     headers = {"Authorization": authorization}
     response = requests.get(url, headers=headers)
 
@@ -418,22 +417,21 @@ def update_lecture_materials(
 
     teacher_lecture = teacher_lecture.get()
 
-    url = f"http://127.0.0.1:8004/api/academia/materials/{teacher_lecture.nume_disciplina}"
+    url = f"http://lectures_web_service:8004/api/academia/materials/{teacher_lecture.nume_disciplina}"
     headers = {"Content-Type": 'application/json', "Authorization": authorization}
     response = requests.put(url, json=materials, headers=headers)
 
     if response.status_code == 204:
-        return {
-            "data": "Successfully updated the lecture materials!"
-        }
+        return {}
     else:
         raise HTTPException(status_code=response.status_code, detail=f"Failed to update the materials for the lecture!")
 
 
-@app.post("/api/academia/teachers/{teacher_id}/lectures/{lecture_code}", status_code=204, responses=(
+@app.post("/api/academia/teachers/{teacher_id}/lectures/{lecture_code}", status_code=201, responses=(
         {
             **default_responses,
             404: {"description": "Not Found"},
+            409: {"description": "Conflict"}
         }
     )
 )
@@ -459,19 +457,17 @@ def add_lecture_materials(
 
     teacher_lecture = teacher_lecture.get()
 
-    url = f"http://127.0.0.1:8004/api/academia/materials/{teacher_lecture.nume_disciplina}"
+    url = f"http://lectures_web_service:8004/api/academia/materials/{teacher_lecture.nume_disciplina}"
     headers = {"Content-Type": 'application/json', "Authorization": authorization}
     response = requests.post(url, json=materials, headers=headers)
 
-    if response.status_code == 204:
-        return {
-            "data": "Successfully added the lecture materials!"
-        }
+    if response.status_code == 201:
+        return response.json()
     else:
         raise HTTPException(status_code=response.status_code, detail=f"Failed to add the materials for the lecture!")
 
 
-@app.post("/api/academia/teachers/", status_code=204, responses=(
+@app.post("/api/academia/teachers/", status_code=201, responses=(
         {
             **default_responses,
         }
@@ -497,15 +493,17 @@ def add_teacher(
             response.status_code = 422
             return {"error": "Invalid email"}
 
-        res = Teacher.insert({
+        resource = {
             "nume": firstName,
             "prenume": lastName,
             "email": email,
             "grad_didactic": teachingDegree.value,
             "tip_asociere": associationType.value,
             "afiliere": affiliation
-        }).execute()
-        return {"status": "success", "data": {"teacher_id": res}}
+        }
+
+        res = Teacher.insert(resource).execute()
+        return {"id": res, **resource}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error inserting teacher: {e}")
 
@@ -538,15 +536,16 @@ def update_teacher(
 
     if not Teacher.get_or_none(Teacher.id == teacher_id):
         response.status_code = 201
-        res = Teacher.insert({
+        resource = {
             "nume": firstName,
             "prenume": lastName,
             "email": email,
             "grad_didactic": teachingDegree.value,
             "tip_asociere": associationType.value,
             "afiliere": affiliation
-        }).execute()
-        return {"status": "success", "data": {"teacher_id": res}}
+        }
+        res = Teacher.insert(resource).execute()
+        return {"id": res, **resource}
     else:
         response.status_code = 204
         res = Teacher.update({
@@ -561,9 +560,7 @@ def update_teacher(
         if res != 1:
             raise HTTPException(status_code=500, detail=f"Failed to update the teacher: {teacher_id}")
 
-        return {
-            "status": "success",
-        }
+        return {}
 
 
 @app.delete("/api/academia/teachers/{teacher_id}", responses=(
@@ -810,7 +807,7 @@ def read_student_lecture(
     if not student_lecture:
         raise HTTPException(status_code=404, detail=f"Lecture not found!")
 
-    url = f"http://127.0.0.1:8004/api/academia/materials/{student_lecture.nume_disciplina}"
+    url = f"http://lectures_web_service:8004/api/academia/materials/{student_lecture.nume_disciplina}"
     headers = {"Authorization": authorization}
     response = requests.get(url)
 
@@ -834,7 +831,7 @@ def read_student_lecture(
         raise HTTPException(status_code=response.status_code, detail=f"Failed to get materials for the lecture!")
 
 
-@app.post("/api/academia/students/", status_code=204, responses=(
+@app.post("/api/academia/students/", status_code=201, responses=(
         {
             **default_responses,
         }
@@ -860,15 +857,17 @@ def add_student(
             response.status_code = 422
             return {"error": "Invalid email"}
 
-        res = Student.insert({
+        resource = {
             "nume": last_name,
             "prenume": first_name,
             "email": email,
             "ciclu_studii": study_cycle.value,
             "an_studiu": study_year,
             "grupa": group
-        }).execute()
-        return {"status": "success", "data": {"student_id": res}}
+        }
+
+        res = Student.insert(resource).execute()
+        return {"id": res, **resource}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error inserting student: {e}")
 
@@ -901,15 +900,16 @@ def update_student(
 
     if not Student.get(Student.id == student_id):
         response.status_code = 201
-        res = Student.insert({
+        resource = {
             "nume": last_name,
             "prenume": first_name,
             "email": email,
             "ciclu_studii": study_cycle.value,
             "an_studiu": study_year,
             "grupa": group
-        }).execute()
-        return {"status": "success", "data": {"student_id": res}}
+        }
+        res = Student.insert(resource).execute()
+        return {"id": res, **resource}
     else:
         response.status_code = 204
         res = Student.update({
@@ -924,9 +924,7 @@ def update_student(
         if res != 1:
             raise HTTPException(status_code=500, detail=f"Failed to update the student: {student_id}")
 
-        return {
-            "status": "success",
-        }
+        return {}
 
 
 @app.delete("/api/academia/students/{student_id}", responses=(
@@ -1072,7 +1070,7 @@ def read_lecture(lecture_code: str, request: Request, authorization: Annotated[s
     }
 
 
-@app.post("/api/academia/lectures/", status_code=204, responses=(
+@app.post("/api/academia/lectures/", status_code=201, responses=(
         {
             **default_responses,
         }
@@ -1093,7 +1091,7 @@ def add_lecture(
         raise HTTPException(status_code=403, detail="You aren't authorized to post this resource")
 
     try:
-        res = Lecture.insert({
+        resource = {
             "cod": code,
             "id_titular": coordinator_id,
             "nume_disciplina": lecture_name,
@@ -1101,8 +1099,10 @@ def add_lecture(
             "tip_disciplina": lecture_type.value,
             "categorie_disciplina": category.value,
             "tip_examinare": examination.value
-        }).execute()
-        return {"status": "success", "data": {"lecture_id": res}}
+        }
+
+        res = Lecture.insert(resource).execute()
+        return {"id": res, **resource}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error inserting lecture: {e}")
 
@@ -1131,7 +1131,7 @@ def update_lecture(
 
     if not Lecture.get_or_none(Lecture.cod == lecture_code):
         response.status_code = 201
-        res = Lecture.insert({
+        resource = {
             "cod": lecture_code,
             "id_titular": coordinator_id,
             "nume_disciplina": lecture_name,
@@ -1139,8 +1139,9 @@ def update_lecture(
             "tip_disciplina": lecture_type.value,
             "categorie_disciplina": category.value,
             "tip_examinare": examination.value
-        }).execute()
-        return {"status": "success", "data": {"lecture_id": res}}
+        }
+        res = Lecture.insert(resource).execute()
+        return {"id": res, **resource}
     else:
         response.status_code = 204
         res = Lecture.update({
@@ -1155,9 +1156,7 @@ def update_lecture(
         if res != 1:
             raise HTTPException(status_code=500, detail=f"Failed to update the lecture: {lecture_code}")
 
-        return {
-            "status": "success",
-        }
+        return {}
 
 
 @app.delete("/api/academia/lectures/{lecture_code}", responses=(

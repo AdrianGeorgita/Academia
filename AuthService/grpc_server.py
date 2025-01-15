@@ -8,9 +8,9 @@ import time
 import hashlib
 
 from peewee import MySQLDatabase
-from peewee import Model, CharField, IntegerField, ForeignKeyField, CompositeKey
+from peewee import Model, CharField, IntegerField
 
-db = MySQLDatabase(database='auth', user='authAdmin', passwd='passwdauth', host='localhost', port=3308)
+db = MySQLDatabase(database='auth_service_db', user='authAdmin', passwd='passwdauth', host='auth_db', port=3308)
 
 db.connect()
 
@@ -77,13 +77,13 @@ class AuthenticationService(auth_pb2_grpc.Authentication):
 
     def Validate(self, request, context):
         encoded_jwt = request.jws
-        status = "Validated"
+        status = "Success"
 
         if not isBlacklisted(encoded_jwt):
             try:
                 payload = jwt.decode(jwt=encoded_jwt, key=JWT_SECRET, algorithms=[JWT_ALGORITHM],
                                      options={'verify_exp': True})
-                body = '\n{"sub": "' + payload["sub"] + '", "role":"' + payload["role"] + '"}'
+                body = '\nValid Token\n{"sub": "' + payload["sub"] + '", "role":"' + payload["role"] + '"}'
             except Exception as e:
                 body = "\n" + str(e)
                 print(e)

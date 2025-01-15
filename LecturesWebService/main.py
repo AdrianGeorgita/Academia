@@ -8,15 +8,15 @@ from fastapi import Request, HTTPException, Header
 from bson.json_util import dumps
 import pymongo
 
-import grpc, auth_pb2, auth_pb2_grpc
+import grpc
+import auth_pb2, auth_pb2_grpc
 
 app = FastAPI()
 
-
-mongodb_uri = "mongodb://pos:posadmin@localhost:27017/pos?authSource=admin"
+mongodb_uri = ("mongodb://dbAdmin:7dddb0ee38fa7f35cb9f33d501c4b77c6088de8535a2232183bebdfe34073443@lectures_db:27017")
 client = pymongo.MongoClient(mongodb_uri)
-db = client["pos"]
-pos_collection = db["pos"]
+db = client["academia"]
+pos_collection = db["lectures"]
 
 def ValidateIdentity(token: str):
     if not token.startswith("Bearer "):
@@ -24,7 +24,7 @@ def ValidateIdentity(token: str):
     else:
         jws = token.split("Bearer ")[1]
 
-        with grpc.insecure_channel("localhost:50051") as channel:
+        with grpc.insecure_channel("auth_service:50051") as channel:
             stub = auth_pb2_grpc.AuthenticationStub(channel)
             response = stub.Validate(auth_pb2.ValidationRequest(jws=jws))
 
@@ -67,6 +67,7 @@ async def root():
     )
 )
 async def get_materials(
+        request: Request,
         authorization: Annotated[str, Header()],
         page: int = 1,
         items_per_page: int = 10
@@ -83,7 +84,17 @@ async def get_materials(
 
     collection = pos_collection.find({}).skip(start_index).limit(items_per_page)
     materials = json.loads(dumps(collection))
-    return {"materials": materials}
+    return {
+        "materials": materials,
+        "_links": {
+            "self": {
+                "href": request.url.path,
+            },
+            "parent": {
+                "href": '/'.join(request.url.path.split('/')[:-1])
+            }
+        }
+    }
 
 
 @app.get("/api/academia/materials/{course}")
@@ -93,9 +104,20 @@ async def get_course_materials(course: str, request: Request, authorization: Ann
 
     collection = pos_collection.find_one({"disciplina": course})
     materials = json.loads(dumps(collection))
-    return materials
+    return {
+        "materials": materials,
+        "_links": {
+            "self": {
+                "href": request.url.path,
+            },
+            "parent": {
+                "href": '/'.join(request.url.path.split('/')[:-1])
+            }
+        }
+    }
 
-@app.post("/api/academia/materials/{course}", status_code=204)
+
+@app.post("/api/academia/materials/{course}", status_code=201)
 async def add_course_materials(course: str, request: Request, authorization: Annotated[str, Header()],):
 
     role, uid = ValidateIdentity(authorization)
@@ -144,16 +166,23 @@ async def add_course_materials(course: str, request: Request, authorization: Ann
             raise HTTPException(status_code=422, detail="Name too long")
         paths.append(lab_material["path"])
 
+    document_exists = pos_collection.find_one({"disciplina": course})
+    if document_exists:
+        raise HTTPException(status_code=409, detail="Course materials already exist")
+
     document = {
         "disciplina": course,
         "probe-evaluare": evaluation,
         "materiale-curs": course_materials,
         "materiale-laborator": lab_materials
     }
+    resource = document.copy()
 
-    pos_collection.insert_one(document)
+    res = pos_collection.insert_one(document)
 
-    return {"message": "Materials document added"}
+    resource["_id"] = str(res.inserted_id)
+
+    return resource
 
 @app.put("/api/academia/materials/{course}", status_code=204, responses=(
         {
@@ -224,4 +253,4 @@ async def update_course_materials(course: str, request: Request, authorization: 
         }
     )
 
-    return {"message": "Course Updated"}
+    return {}

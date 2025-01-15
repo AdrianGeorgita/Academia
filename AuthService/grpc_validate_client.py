@@ -1,4 +1,3 @@
-from concurrent import futures
 import grpc
 import auth_pb2
 import auth_pb2_grpc
