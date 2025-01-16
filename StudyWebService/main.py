@@ -245,6 +245,10 @@ def read_teachers(
             "parent": {
                 "href": '/'.join(request.url.path.split('/')[:-1])
             },
+            "create": {
+                "href": request.url.path,
+                "method": "POST",
+            },
         }
         teachers.append(teacher_dict)
 
@@ -280,6 +284,14 @@ def read_teacher(teacher_id: int, request: Request, authorization: Annotated[str
                 },
                 "lectures": {
                     "href": request.url.path + "/lectures"
+                },
+                "update": {
+                    "href": request.url.path,
+                    "method": "PUT",
+                },
+                "delete": {
+                    "href": request.url.path,
+                    "method": "DELETE",
                 },
             }
         }
@@ -395,7 +407,15 @@ def read_teacher_lecture(
                 },
                 "parent": {
                     "href": '/'.join(request.url.path.split('/')[:-1])
-                }
+                },
+                "update": {
+                    "href": request.url.path,
+                    "method": "PUT",
+                },
+                "create": {
+                    "href": request.url.path,
+                    "method": "POST",
+                },
             }
         }
 
@@ -681,7 +701,11 @@ def read_students(
             },
             "parent": {
                 "href": '/'.join(request.url.path.split('/')[:-1])
-            }
+            },
+            "create": {
+                "href": request.url.path,
+                "method": "POST",
+            },
         }
         students.append(student_dict)
 
@@ -1063,7 +1087,11 @@ def read_lectures(
             },
             "parent": {
                 "href": '/'.join(request.url.path.split('/')[:-1])
-            }
+            },
+            "create": {
+                "href": request.url.path,
+                "method": "POST",
+            },
         }
         lectures.append(lecture_dict)
 
@@ -1097,6 +1125,14 @@ def read_lecture(lecture_code: str, request: Request, authorization: Annotated[s
                 },
                 "parent": {
                     "href": '/'.join(request.url.path.split('/')[:-1])
+                },
+                "update": {
+                    "href": request.url.path,
+                    "method": "PUT",
+                },
+                "delete": {
+                    "href": request.url.path,
+                    "method": "DELETE",
                 },
             }
         }
