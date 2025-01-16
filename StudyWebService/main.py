@@ -14,9 +14,24 @@ import requests
 import grpc
 import auth_pb2, auth_pb2_grpc
 
+from fastapi.middleware.cors import CORSMiddleware
+
 db = MySQLDatabase(database='study_service_db', user='posadmin', passwd='passwdpos', host='study_db', port=3306)
 
 app = FastAPI()
+
+origins = [
+    "http://localhost",
+    "http://localhost:3000",
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 db.connect()
 
@@ -703,7 +718,15 @@ def read_student(student_id: int, request: Request, authorization: Annotated[str
                 },
                 "lectures": {
                     "href": request.url.path + "/lectures"
-                }
+                },
+                "update": {
+                    "href": request.url.path,
+                    "method": "PUT"
+                },
+                "delete": {
+                    "href": request.url.path,
+                    "method": "DELETE"
+                },
             }
         }
     }
@@ -761,7 +784,17 @@ def read_student_lectures(
 
     return {
         "student-lectures": {
-            "lectures": student_lectures,
+            "lectures": [
+                {
+                    **lecture,
+                    "_links": {
+                        "self": {
+                            "href": f"{request.url.path}/{lecture['cod']}",
+                        }
+                    }
+                }
+                for lecture in student_lectures
+            ],
             "_links": {
                 "self": {
                     "href": request.url.path,
@@ -809,7 +842,7 @@ def read_student_lecture(
 
     url = f"http://lectures_web_service:8004/api/academia/materials/{student_lecture.nume_disciplina}"
     headers = {"Authorization": authorization}
-    response = requests.get(url)
+    response = requests.get(url, headers=headers)
 
     if response.status_code == 200:
         data = response.json()
