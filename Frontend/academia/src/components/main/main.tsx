@@ -37,13 +37,17 @@ const MainPage: React.FC = () => {
     const [error, setError] = useState<string>('');
     const navigate = useNavigate();
 
-    const HOME_PAGE_FETCH_URL = 'http://localhost:8000/api/academia/students/1/lectures'
+    const home_page_api = localStorage.getItem('homePage') || "";
+
+    console.log(home_page_api)
 
     useEffect(() => {
         const fetchLectures = async () => {
             try {
                 const token = localStorage.getItem('authToken');
-                const response = await fetch(HOME_PAGE_FETCH_URL, {
+                if(!token)
+                    navigate('/login')
+                const response = await fetch(home_page_api, {
                     method: 'GET',
                     headers: {
                         'Content-Type': 'application/json',
@@ -56,8 +60,8 @@ const MainPage: React.FC = () => {
                 }
 
                 const data = await response.json();
-                setLectures(data["student-lectures"].lectures);
-                setLinks(data["student-lectures"]._links);
+                setLectures(data["lectures"].lectures);
+                setLinks(data["lectures"]._links);
             } catch (error) {
                 if (error instanceof Error) {
                     setError(error.message);
@@ -68,7 +72,7 @@ const MainPage: React.FC = () => {
         };
 
         fetchLectures();
-    }, []);
+    }, [navigate]);
 
     const handleViewLecture = (path: string) => {
         const cod = path.split('/').pop()!

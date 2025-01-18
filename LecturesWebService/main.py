@@ -8,6 +8,8 @@ from fastapi import Request, HTTPException, Header
 from bson.json_util import dumps
 import pymongo
 
+import requests
+
 import grpc
 import auth_pb2, auth_pb2_grpc
 
@@ -74,6 +76,8 @@ async def get_materials(
 ):
 
     role, uid = ValidateIdentity(authorization)
+    if (role not in ["profesor"]):
+        raise HTTPException(status_code=403, detail="You aren't authorized to access this resource")
 
     start_index = (page - 1) * items_per_page
     total_items = pos_collection.count_documents({})
@@ -89,9 +93,11 @@ async def get_materials(
         "_links": {
             "self": {
                 "href": request.url.path,
+                "method": "GET",
             },
             "parent": {
-                "href": '/'.join(request.url.path.split('/')[:-1])
+                "href": '/'.join(request.url.path.split('/')[:-1]),
+                "method": "GET",
             }
         }
     }
@@ -102,25 +108,57 @@ async def get_course_materials(course: str, request: Request, authorization: Ann
 
     role, uid = ValidateIdentity(authorization)
 
-    collection = pos_collection.find_one({"disciplina": course})
-    materials = json.loads(dumps(collection))
-    return {
-        "materials": materials,
-        "_links": {
-            "self": {
-                "href": request.url.path,
-            },
-            "parent": {
-                "href": '/'.join(request.url.path.split('/')[:-1])
+    url = f"http://study_web_service:8000/api/academia/lectures/authorization/{course}?method=GET"
+    headers = {"Authorization": authorization}
+    response = requests.get(url, headers=headers)
+
+    if response.status_code == 200:
+        data = response.json()
+
+        if data["status"] != "authorized":
+             raise HTTPException(status_code=403, detail="You aren't authorized to access this resource")
+
+        collection = pos_collection.find_one({"disciplina": course})
+        materials = json.loads(dumps(collection))
+        return {
+            "materials": materials,
+            "_links": {
+                "self": {
+                    "href": request.url.path,
+                    "method": "GET",
+                },
+                "parent": {
+                    "href": '/'.join(request.url.path.split('/')[:-1]),
+                    "method": "GET",
+                },
+                "update": {
+                    "href": request.url.path,
+                    "method": "PUT",
+                },
+                "create": {
+                    "href": '/'.join(request.url.path.split('/')[:-1]),
+                    "method": "POST",
+                }
             }
         }
-    }
+
+
 
 
 @app.post("/api/academia/materials/{course}", status_code=201)
 async def add_course_materials(course: str, request: Request, authorization: Annotated[str, Header()],):
 
     role, uid = ValidateIdentity(authorization)
+
+    url = f"http://study_web_service:8000/api/academia/lectures/authorization/{course}?method=POST"
+    headers = {"Authorization": authorization}
+    response = requests.get(url, headers=headers)
+
+    if response.status_code == 200:
+        data = response.json()
+
+        if data["status"] != "authorized":
+            raise HTTPException(status_code=403, detail="You aren't authorized to access this resource")
 
     body = await request.json()
 
@@ -194,6 +232,16 @@ async def add_course_materials(course: str, request: Request, authorization: Ann
 async def update_course_materials(course: str, request: Request, authorization: Annotated[str, Header()],):
 
     role, uid = ValidateIdentity(authorization)
+
+    url = f"http://study_web_service:8000/api/academia/lectures/authorization/{course}?method=GET"
+    headers = {"Authorization": authorization}
+    response = requests.get(url, headers=headers)
+
+    if response.status_code == 200:
+        data = response.json()
+
+        if data["status"] != "authorized":
+            raise HTTPException(status_code=403, detail="You aren't authorized to access this resource")
 
     if not pos_collection.find_one({"disciplina": course}):
         raise HTTPException(status_code=404, detail="Course not found")

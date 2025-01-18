@@ -33,6 +33,8 @@ const ProfilePage: React.FC = () => {
         const fetchStudentProfile = async () => {
             try {
                 const token = localStorage.getItem('authToken');
+                if(!token)
+                    navigate('/login')
                 const profilePath = localStorage.getItem('profilePath');
                 if (!profilePath) return;
 
@@ -60,7 +62,7 @@ const ProfilePage: React.FC = () => {
         };
 
         fetchStudentProfile();
-    }, []);
+    }, [navigate]);
 
     const handleUpdate = async () => {
         if (!student || !student._links.update) return;

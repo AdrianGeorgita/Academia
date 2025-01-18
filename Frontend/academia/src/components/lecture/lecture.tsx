@@ -50,6 +50,8 @@ const LecturePage: React.FC = () => {
         const fetchLectureDetails = async () => {
             try {
                 const token = localStorage.getItem('authToken');
+                if(!token)
+                    navigate('/login')
                 const response = await fetch(`${host}${path}`, {
                     method: 'GET',
                     headers: {
@@ -72,7 +74,7 @@ const LecturePage: React.FC = () => {
         };
 
         fetchLectureDetails();
-    }, [path, cod]);
+    }, [path, cod, navigate]);
 
 
     if (loading) {
@@ -96,7 +98,7 @@ const LecturePage: React.FC = () => {
         <div>
             <NavBar />
             <div className="lecture-page-container">
-                <button className="back-button" onClick={() => navigate('/main')}>Back to Main</button>
+                <button className="back-button" onClick={() => navigate('/')}>Back to Main</button>
 
                 <div className="section-container lecture-details">
                     <h1>{lectureDetails.lecture.nume_disciplina}</h1>

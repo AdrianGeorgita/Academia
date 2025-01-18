@@ -241,9 +241,11 @@ def read_teachers(
         teacher_dict["_links"] = {
             "self": {
                 "href": request.url.path,
+                "method": "GET",
             },
             "parent": {
-                "href": '/'.join(request.url.path.split('/')[:-1])
+                "href": '/'.join(request.url.path.split('/')[:-1]),
+                "method": "GET",
             },
             "create": {
                 "href": request.url.path,
@@ -278,12 +280,15 @@ def read_teacher(teacher_id: int, request: Request, authorization: Annotated[str
             "_links": {
                 "self": {
                     "href": request.url.path,
+                    "method": "GET",
                 },
                 "parent": {
-                    "href": '/'.join(request.url.path.split('/')[:-1])
+                    "href": '/'.join(request.url.path.split('/')[:-1]),
+                    "method": "GET",
                 },
                 "lectures": {
-                    "href": request.url.path + "/lectures"
+                    "href": request.url.path + "/lectures",
+                    "method": "GET",
                 },
                 "update": {
                     "href": request.url.path,
@@ -347,14 +352,16 @@ def read_teacher_lectures(
         teacher_lectures.append(lecture_dict)
 
     return {
-        "teacher-lectures": {
+        "lectures": {
             "lectures": teacher_lectures,
             "_links": {
                 "self": {
                     "href": request.url.path,
+                    "method": "GET",
                 },
                 "parent": {
-                    "href": '/'.join(request.url.path.split('/')[:-1])
+                    "href": '/'.join(request.url.path.split('/')[:-1]),
+                    "method": "GET",
                 }
             }
         }
@@ -404,9 +411,11 @@ def read_teacher_lecture(
             "_links": {
                 "self": {
                     "href": request.url.path,
+                    "method": "GET",
                 },
                 "parent": {
-                    "href": '/'.join(request.url.path.split('/')[:-1])
+                    "href": '/'.join(request.url.path.split('/')[:-1]),
+                    "method": "GET",
                 },
                 "update": {
                     "href": request.url.path,
@@ -698,9 +707,11 @@ def read_students(
         student_dict["_links"] = {
             "self": {
                 "href": request.url.path,
+                "method": "GET",
             },
             "parent": {
-                "href": '/'.join(request.url.path.split('/')[:-1])
+                "href": '/'.join(request.url.path.split('/')[:-1]),
+                "method": "GET",
             },
             "create": {
                 "href": request.url.path,
@@ -736,12 +747,15 @@ def read_student(student_id: int, request: Request, authorization: Annotated[str
             "_links": {
                 "self": {
                     "href": request.url.path,
+                    "method": "GET",
                 },
                 "parent": {
-                    "href": '/'.join(request.url.path.split('/')[:-1])
+                    "href": '/'.join(request.url.path.split('/')[:-1]),
+                    "method": "GET",
                 },
                 "lectures": {
-                    "href": request.url.path + "/lectures"
+                    "href": request.url.path + "/lectures",
+                    "method": "GET",
                 },
                 "update": {
                     "href": request.url.path,
@@ -807,13 +821,14 @@ def read_student_lectures(
         student_lectures.append(lecture_dict)
 
     return {
-        "student-lectures": {
+        "lectures": {
             "lectures": [
                 {
                     **lecture,
                     "_links": {
                         "self": {
                             "href": f"{request.url.path}/{lecture['cod']}",
+                            "method": "GET",
                         }
                     }
                 }
@@ -822,9 +837,11 @@ def read_student_lectures(
             "_links": {
                 "self": {
                     "href": request.url.path,
+                    "method": "GET",
                 },
                 "parent": {
-                    "href": '/'.join(request.url.path.split('/')[:-1])
+                    "href": '/'.join(request.url.path.split('/')[:-1]),
+                    "method": "GET",
                 }
             }
         }
@@ -877,9 +894,11 @@ def read_student_lecture(
             "_links": {
                 "self": {
                     "href": request.url.path,
+                    "method": "GET",
                 },
                 "parent": {
-                    "href": '/'.join(request.url.path.split('/')[:-1])
+                    "href": '/'.join(request.url.path.split('/')[:-1]),
+                    "method": "GET",
                 }
             }
         }
@@ -1084,9 +1103,11 @@ def read_lectures(
         lecture_dict["_links"] = {
             "self": {
                 "href": request.url.path,
+                "method": "GET",
             },
             "parent": {
-                "href": '/'.join(request.url.path.split('/')[:-1])
+                "href": '/'.join(request.url.path.split('/')[:-1]),
+                "method": "GET",
             },
             "create": {
                 "href": request.url.path,
@@ -1122,9 +1143,11 @@ def read_lecture(lecture_code: str, request: Request, authorization: Annotated[s
             "_links": {
                 "self": {
                     "href": request.url.path,
+                    "method": "GET",
                 },
                 "parent": {
-                    "href": '/'.join(request.url.path.split('/')[:-1])
+                    "href": '/'.join(request.url.path.split('/')[:-1]),
+                    "method": "GET",
                 },
                 "update": {
                     "href": request.url.path,
@@ -1260,3 +1283,57 @@ def delete_lecture(
         "lecture": {**model_to_dict(copy)}
     }
 
+
+@app.get("/api/academia/lectures/authorization/{lecture_name}", responses=(
+        {
+            **default_responses,
+            404: {"description": "Not Found"},
+        }
+    )
+)
+def validate_materials_access(lecture_name: str, method: str, request: Request, authorization: Annotated[str, Header()]):
+    status = "unauthorized"
+    role, user_id = ValidateIdentity(authorization)
+
+    if role == "profesor":
+        try:
+            if method == "GET":
+                status = "authorized"
+            elif method in ["POST", "PUT", "DELETE"]:
+                lecture = Lecture.select().where(Lecture.nume_disciplina == lecture_name).get()
+                if lecture and lecture.id_titular == user_id:
+                    status = "authorized"
+        except:
+            raise HTTPException(status_code=404, detail="Lecture not found")
+    elif role == "student":
+        if method != "GET":
+            raise HTTPException(status_code=403, detail="You aren't authorized to access this resource")
+        try:
+            student = Student.select().where(Student.id == user_id).get()
+            lecture = Lecture.select().where(Lecture.nume_disciplina == lecture_name).get()
+        except:
+            raise HTTPException(status_code=404, detail="Student/Lecture not found")
+
+        student_lecture_res = Student_Disciplina.select().where(
+            (Student_Disciplina.StudentID == student.id) & (Student_Disciplina.DisciplinaID == lecture.cod))
+
+        if student_lecture_res.count() != 1:
+            raise HTTPException(status_code=403, detail=f"Student not assigned to the lecture!")
+        else:
+            status = "authorized"
+    else:
+        raise HTTPException(status_code=403, detail="You aren't authorized to access this resource")
+
+    return {
+        "status": status,
+        "_links": {
+            "self": {
+                "href": request.url.path,
+                "method": "GET",
+            },
+            "parent": {
+                "href": '/'.join(request.url.path.split('/')[:-1]),
+                "method": "GET",
+            },
+        }
+    }
