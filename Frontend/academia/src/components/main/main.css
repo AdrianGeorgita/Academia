@@ -1,4 +1,3 @@
-
 .main-container {
     padding: 20px;
     font-family: Arial, sans-serif;
@@ -32,6 +31,17 @@
 .lecture-item p {
     margin: 5px 0;
     font-size: 1rem;
+}
+
+.lecture-name {
+    font-weight: normal;
+}
+
+.coordinator-label {
+    color: #27ae60;
+    font-weight: bold;
+    font-size: 1rem;
+    margin-top: 10px;
 }
 
 .view-lecture-button {

@@ -1,3 +1,4 @@
+import base64
 import json
 from math import ceil
 
@@ -5,6 +6,7 @@ from typing import Annotated
 
 from fastapi import FastAPI
 from fastapi import Request, HTTPException, Header
+from fastapi.middleware.cors import CORSMiddleware
 from bson.json_util import dumps
 import pymongo
 
@@ -48,6 +50,18 @@ default_responses = {
     500: {"description": "Internal Server Error"},
 }
 
+origins = [
+    "http://localhost",
+    "http://localhost:3000",
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 @app.get("/")
 async def root():
@@ -115,12 +129,13 @@ async def get_course_materials(course: str, request: Request, authorization: Ann
     if response.status_code == 200:
         data = response.json()
 
-        if data["status"] != "authorized":
+        if data["status"] not in ["authorized", "owner"]:
              raise HTTPException(status_code=403, detail="You aren't authorized to access this resource")
 
         collection = pos_collection.find_one({"disciplina": course})
         materials = json.loads(dumps(collection))
-        return {
+
+        dictionary = {
             "materials": materials,
             "_links": {
                 "self": {
@@ -131,16 +146,20 @@ async def get_course_materials(course: str, request: Request, authorization: Ann
                     "href": '/'.join(request.url.path.split('/')[:-1]),
                     "method": "GET",
                 },
-                "update": {
-                    "href": request.url.path,
-                    "method": "PUT",
-                },
-                "create": {
-                    "href": '/'.join(request.url.path.split('/')[:-1]),
-                    "method": "POST",
-                }
             }
         }
+
+        if data["status"] == "owner":
+            dictionary["_links"]["update"] = {
+                "href": request.url.path,
+                "method": "PUT",
+            }
+            dictionary["_links"]["create"] = {
+                "href": request.url.path,
+                "method": "POST",
+            }
+
+        return dictionary
 
 
 
@@ -157,7 +176,7 @@ async def add_course_materials(course: str, request: Request, authorization: Ann
     if response.status_code == 200:
         data = response.json()
 
-        if data["status"] != "authorized":
+        if data["status"] != "owner":
             raise HTTPException(status_code=403, detail="You aren't authorized to access this resource")
 
     body = await request.json()
@@ -176,33 +195,51 @@ async def add_course_materials(course: str, request: Request, authorization: Ann
 
     # Validate Course Materials
     course_materials = body["materiale-curs"]
-    paths = []
     for course_material in course_materials:
         # Validate name and path ?
-        if course_material["nume-fisier"] == "" or course_material["path"] == "":
-            raise HTTPException(status_code=422, detail="Invalid Path or Name")
-        if course_material["path"] in paths:
-            raise HTTPException(status_code=422, detail="Duplicate Path")
-        if len(course_material["path"]) > 2048:
-            raise HTTPException(status_code=422, detail="Path too long")
+        if course_material["nume-fisier"] == "":
+            raise HTTPException(status_code=422, detail="Name cannot be empty!")
+
+        if "content" not in course_material or not course_material["content"]:
+            raise HTTPException(status_code=422, detail="File content cannot be empty")
+
+        try:
+            file_content = base64.b64decode(course_material["content"])
+        except Exception:
+            raise HTTPException(status_code=422, detail="Invalid file content encoding")
+
+        if not course_material["nume-fisier"].lower().endswith(".pdf"):
+            raise HTTPException(status_code=422, detail="Only PDF files are allowed")
+
+        if len(file_content) > 5 * 1024 * 1024:
+            raise HTTPException(status_code=422, detail="File size exceeds limit")
+
         if len(course_material["nume-fisier"]) > 256:
             raise HTTPException(status_code=422, detail="Name too long")
-        paths.append(course_material["path"])
 
     # Validate Laboratory Materials
     lab_materials = body["materiale-laborator"]
-    paths = []
     for lab_material in lab_materials:
         # Validate name and path ?
-        if lab_material["nume-fisier"] == "" or lab_material["path"] == "":
-            raise HTTPException(status_code=422, detail="Invalid Path or Name")
-        if lab_material["path"] in paths:
-            raise HTTPException(status_code=422, detail="Duplicate Path")
-        if len(lab_material["path"]) > 2048:
-            raise HTTPException(status_code=422, detail="Path too long")
+        if lab_material["nume-fisier"] == "" :
+            raise HTTPException(status_code=422, detail="File name cannot be empty")
+
+        if "content" not in lab_material or not lab_material["content"]:
+            raise HTTPException(status_code=422, detail="File content cannot be empty")
+
+        try:
+            file_content = base64.b64decode(lab_material["content"])
+        except Exception:
+            raise HTTPException(status_code=422, detail="Invalid file content encoding")
+
+        if len(file_content) > 5 * 1024 * 1024:
+            raise HTTPException(status_code=422, detail="File size exceeds limit")
+
+        if not lab_material["nume-fisier"].lower().endswith(".pdf"):
+            raise HTTPException(status_code=422, detail="Only PDF files are allowed")
+
         if len(lab_material["nume-fisier"]) > 256:
             raise HTTPException(status_code=422, detail="Name too long")
-        paths.append(lab_material["path"])
 
     document_exists = pos_collection.find_one({"disciplina": course})
     if document_exists:
@@ -240,7 +277,7 @@ async def update_course_materials(course: str, request: Request, authorization: 
     if response.status_code == 200:
         data = response.json()
 
-        if data["status"] != "authorized":
+        if data["status"] != "owner":
             raise HTTPException(status_code=403, detail="You aren't authorized to access this resource")
 
     if not pos_collection.find_one({"disciplina": course}):
@@ -262,33 +299,51 @@ async def update_course_materials(course: str, request: Request, authorization: 
 
     # Validate Course Materials
     course_materials = body["materiale-curs"]
-    paths = []
     for course_material in course_materials:
         # Validate name and path ?
-        if course_material["nume-fisier"] == "" or course_material["path"] == "":
-            raise HTTPException(status_code=422, detail="Invalid Path or Name")
-        if course_material["path"] in paths:
-            raise HTTPException(status_code=422, detail="Duplicate Path")
-        if len(course_material["path"]) > 2048:
-            raise HTTPException(status_code=422, detail="Path too long")
+        if course_material["nume-fisier"] == "":
+            raise HTTPException(status_code=422, detail="Name cannot be empty")
+
+        if "content" not in course_material or not course_material["content"]:
+            raise HTTPException(status_code=422, detail="File content cannot be empty")
+
+        try:
+            file_content = base64.b64decode(course_material["content"])
+        except Exception:
+            raise HTTPException(status_code=422, detail="Invalid file content encoding")
+
+        if not course_material["nume-fisier"].lower().endswith(".pdf"):
+            raise HTTPException(status_code=422, detail="Only PDF files are allowed")
+
+        if len(file_content) > 5 * 1024 * 1024:
+            raise HTTPException(status_code=422, detail="File size exceeds limit")
+
         if len(course_material["nume-fisier"]) > 256:
             raise HTTPException(status_code=422, detail="Name too long")
-        paths.append(course_material["path"])
 
     # Validate Laboratory Materials
     lab_materials = body["materiale-laborator"]
-    paths = []
     for lab_material in lab_materials:
         # Validate name and path ?
-        if lab_material["nume-fisier"] == "" or lab_material["path"] == "":
-            raise HTTPException(status_code=422, detail="Invalid Path or Name")
-        if lab_material["path"] in paths:
-            raise HTTPException(status_code=422, detail="Duplicate Path")
-        if len(lab_material["path"]) > 2048:
-            raise HTTPException(status_code=422, detail="Path too long")
+        if lab_material["nume-fisier"] == "":
+            raise HTTPException(status_code=422, detail="Name cannot be empty")
+
+        if "content" not in lab_material or not lab_material["content"]:
+            raise HTTPException(status_code=422, detail="File content cannot be empty")
+
+        try:
+            file_content = base64.b64decode(lab_material["content"])
+        except Exception:
+            raise HTTPException(status_code=422, detail="Invalid file content encoding")
+
+        if len(file_content) > 5 * 1024 * 1024:
+            raise HTTPException(status_code=422, detail="File size exceeds limit")
+
+        if not lab_material["nume-fisier"].lower().endswith(".pdf"):
+            raise HTTPException(status_code=422, detail="Only PDF files are allowed")
+
         if len(lab_material["nume-fisier"]) > 256:
             raise HTTPException(status_code=422, detail="Name too long")
-        paths.append(lab_material["path"])
 
     pos_collection.update_one(
         {"disciplina": course},

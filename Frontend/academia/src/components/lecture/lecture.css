@@ -1,25 +1,25 @@
-
 .lecture-page-container {
     padding: 20px;
     max-width: 100%;
     margin: 0 auto;
-    font-family: Arial, sans-serif;
+    font-family: 'Roboto', sans-serif;
 }
 
 .back-button {
     background-color: #007BFF;
     color: white;
-    padding: 10px 20px;
+    padding: 12px 25px;
     border: none;
     border-radius: 5px;
-    font-size: 1rem;
+    font-size: 1.1rem;
     cursor: pointer;
-    margin-bottom: 20px;
-    transition: background-color 0.3s ease;
+    margin-bottom: 30px;
+    transition: background-color 0.3s ease, transform 0.2s ease;
 }
 
 .back-button:hover {
     background-color: #0056b3;
+    transform: translateY(-2px);
 }
 
 .back-button:focus {
@@ -27,13 +27,13 @@
 }
 
 .lecture-page-container h1 {
-    font-size: 2rem;
+    font-size: 2.2rem;
     margin-bottom: 15px;
     color: #333;
 }
 
 .lecture-page-container h3 {
-    font-size: 1.5rem;
+    font-size: 1.6rem;
     margin-top: 20px;
     margin-bottom: 10px;
     color: #444;
@@ -42,7 +42,7 @@
 .lecture-details p {
     font-size: 1rem;
     line-height: 1.6;
-    margin-bottom: 8px;
+    margin-bottom: 10px;
     color: #555;
 }
 
@@ -51,11 +51,46 @@
 }
 
 .section-container {
-    border: 1px solid #ccc;
-    margin-bottom: 20px;
-    padding: 20px;
+    border: 1px solid #ddd;
+    margin-bottom: 25px;
+    padding: 25px;
     border-radius: 8px;
-    background-color: #f9f9f9;
+    background-color: #fafafa;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.evaluation-list {
+    list-style-type: none;
+    padding: 0;
+}
+
+.evaluation-list li {
+    margin-bottom: 15px;
+}
+
+.evaluation-list input {
+    padding: 8px;
+    font-size: 1rem;
+    border-radius: 4px;
+    border: 1px solid #ccc;
+    width: 150px;
+}
+
+.update-button {
+    background-color: #28a745;
+    color: white;
+    padding: 12px 20px;
+    border: none;
+    border-radius: 5px;
+    font-size: 1.1rem;
+    cursor: pointer;
+    margin-top: 20px;
+    transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+.update-button:hover {
+    background-color: #218838;
+    transform: translateY(-2px);
 }
 
 .materials-list {
@@ -64,26 +99,63 @@
 }
 
 .materials-list li {
-    margin-bottom: 10px;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #eee;
 }
 
-.materials-list a {
-    text-decoration: none;
-    color: #007BFF;
-    font-weight: bold;
-    transition: color 0.3s ease;
+.materials-list button {
+    padding: 8px 15px;
+    margin-right: 10px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
 }
 
-.materials-list a:hover {
-    color: #0056b3;
-    text-decoration: underline;
+.download-btn {
+    background-color: #007BFF;
+    color: white;
 }
 
-.loading, .error {
-    font-size: 1.2rem;
+.download-btn:hover {
+    background-color: #0056b3;
+}
+
+.delete-btn {
+    background-color: #dc3545;
+    color: white;
+}
+
+.delete-btn:hover {
+    background-color: #c82333;
+}
+
+.upload-btn {
+    background-color: #17a2b8;
+    color: white;
+    padding: 12px 20px;
+    border: none;
+    border-radius: 5px;
+    font-size: 1.1rem;
+    margin-top: 10px;
+    transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+.upload-btn:hover {
+    background-color: #138496;
+    transform: translateY(-2px);
+}
+
+input[type="file"] {
+    margin-top: 15px;
+}
+
+.error {
+    font-size: 1.1rem;
     color: #ff0000;
     font-weight: bold;
     text-align: center;
+    margin-top: 20px;
 }
 
 @media (max-width: 768px) {
@@ -96,10 +168,22 @@
     }
 
     .lecture-page-container h3 {
-        font-size: 1.3rem;
+        font-size: 1.4rem;
     }
 
     .lecture-details p {
         font-size: 0.95rem;
+    }
+
+    .evaluation-list input {
+        width: 120px;
+    }
+
+    .section-container {
+        padding: 15px;
+    }
+
+    .update-button, .upload-btn {
+        padding: 10px 18px;
     }
 }

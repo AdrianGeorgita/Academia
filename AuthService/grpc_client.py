@@ -81,10 +81,14 @@ def login(
         role, uid = ValidateIdentity("Bearer " + response.jws)
 
         home_page = ""
+        profile_page = ""
         if role == "student":
             home_page = f"http://localhost:8000/api/academia/students/{uid}/lectures"
+            profile_page = f"http://localhost:8000/api/academia/students/{uid}"
         elif role == "profesor":
-            home_page = f"http://localhost:8000/api/academia/teachers/{uid}/lectures"
+            #home_page = f"http://localhost:8000/api/academia/teachers/{uid}/lectures"
+            home_page = f"http://localhost:8000/api/academia/lectures"
+            profile_page = f"http://localhost:8000/api/academia/teachers/{uid}"
         elif role == "admin":
             home_page = f"http://localhost:8000/api/academia/teachers"
 
@@ -101,6 +105,10 @@ def login(
                 },
                 "home_page": {
                     "href": home_page,
+                    "method": "GET",
+                },
+                "profile_page": {
+                    "href": profile_page,
                     "method": "GET",
                 }
             }

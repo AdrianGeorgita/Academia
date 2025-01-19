@@ -16,6 +16,10 @@ interface LoginResponse {
         home_page: {
             href: string,
             method: string,
+        },
+        profile_page: {
+            href: string,
+            method: string,
         }
     }
 }
@@ -50,7 +54,7 @@ const Login: React.FC = () => {
             }
 
             setLogoutLink(data._links.logout.href);
-            setTokenAndNavigate(data.token, data._links.home_page.href);
+            setTokenAndNavigate(data.token, data._links.home_page.href, data._links.profile_page.href);
         } catch (error) {
             if (error instanceof Error) {
                 setError(error.message);
@@ -64,9 +68,10 @@ const Login: React.FC = () => {
         localStorage.setItem('logoutPath', link);
     }
 
-    const setTokenAndNavigate = (token: string, mainPage: string) => {
+    const setTokenAndNavigate = (token: string, mainPage: string, profilePage: string) => {
         localStorage.setItem('authToken', token);
         localStorage.setItem("homePage", mainPage);
+        localStorage.setItem("profilePath", profilePage)
         setError('');
         navigate('/');
     };

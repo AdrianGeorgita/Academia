@@ -601,7 +601,7 @@ def update_teacher(
             "afiliere": affiliation
         }).where(Teacher.id == teacher_id).execute()
 
-        if res != 1:
+        if response.status_code == 201 and res != 1:
             raise HTTPException(status_code=500, detail=f"Failed to update the teacher: {teacher_id}")
 
         return {}
@@ -997,7 +997,7 @@ def update_student(
             "grupa": group
         }).where(Student.id == student_id).execute()
 
-        if res != 1:
+        if response.status_code == 201 and res != 1:
             raise HTTPException(status_code=500, detail=f"Failed to update the student: {student_id}")
 
         return {}
@@ -1102,21 +1102,42 @@ def read_lectures(
         lecture_dict = model_to_dict(lecture)
         lecture_dict["_links"] = {
             "self": {
-                "href": request.url.path,
+                "href": request.url.path + "/" + lecture_dict["cod"],
                 "method": "GET",
             },
             "parent": {
-                "href": '/'.join(request.url.path.split('/')[:-1]),
+                "href": request.url.path,
                 "method": "GET",
             },
-            "create": {
-                "href": request.url.path,
-                "method": "POST",
-            },
         }
+
+        if int(lecture_dict["id_titular"]) == int(user_id):
+            lecture_dict["_links"]["update"] = {
+                "href": request.url.path,
+                "method": "PUT",
+            }
+
         lectures.append(lecture_dict)
 
-    return {"lectures": lectures}
+    return {"lectures":
+        {
+            "lectures": lectures,
+            "_links": {
+                "self": {
+                    "href": request.url.path,
+                    "method": "GET",
+                },
+                "parent": {
+                    "href": '/'.join(request.url.path.split('/')[:-1]),
+                    "method": "GET",
+                },
+                "create": {
+                    "href": request.url.path,
+                    "method": "POST",
+                },
+            }
+        }
+    }
 
 
 @app.get("/api/academia/lectures/{lecture_code}", responses=(
@@ -1137,9 +1158,18 @@ def read_lecture(lecture_code: str, request: Request, authorization: Annotated[s
     except:
         raise HTTPException(status_code=404, detail="Lecture not found")
 
-    return {
-        "lecture": {
-            **model_to_dict(lecture),
+    url = f"http://lectures_web_service:8004/api/academia/materials/{lecture.nume_disciplina}"
+    headers = {"Authorization": authorization}
+    response = requests.get(url, headers=headers)
+
+    if response.status_code == 200:
+        data = response.json()
+
+        lecture = {
+            "lecture": {
+                **model_to_dict(lecture),
+            },
+            "materials": data,
             "_links": {
                 "self": {
                     "href": request.url.path,
@@ -1149,17 +1179,18 @@ def read_lecture(lecture_code: str, request: Request, authorization: Annotated[s
                     "href": '/'.join(request.url.path.split('/')[:-1]),
                     "method": "GET",
                 },
-                "update": {
-                    "href": request.url.path,
-                    "method": "PUT",
-                },
-                "delete": {
-                    "href": request.url.path,
-                    "method": "DELETE",
-                },
             }
         }
-    }
+    else:
+        raise HTTPException(status_code=response.status_code, detail=f"Failed to get materials for the lecture!")
+
+    if int(lecture["lecture"]["id_titular"]) == int(user_id):
+        lecture["_links"]["update"] = {
+            "href": request.url.path,
+            "method": "PUT",
+        }
+
+    return lecture
 
 
 @app.post("/api/academia/lectures/", status_code=201, responses=(
@@ -1297,12 +1328,14 @@ def validate_materials_access(lecture_name: str, method: str, request: Request, 
 
     if role == "profesor":
         try:
+            lecture = Lecture.select().where(Lecture.nume_disciplina == lecture_name).get()
             if method == "GET":
                 status = "authorized"
+                if lecture and int(lecture.id_titular) == int(user_id):
+                    status = "owner"
             elif method in ["POST", "PUT", "DELETE"]:
-                lecture = Lecture.select().where(Lecture.nume_disciplina == lecture_name).get()
-                if lecture and lecture.id_titular == user_id:
-                    status = "authorized"
+                if lecture and int(lecture.id_titular) == int(user_id):
+                    status = "owner"
         except:
             raise HTTPException(status_code=404, detail="Lecture not found")
     elif role == "student":

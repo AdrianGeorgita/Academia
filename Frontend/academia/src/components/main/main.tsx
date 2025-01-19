@@ -12,21 +12,19 @@ interface Lecture {
     categorie_disciplina: string;
     tip_examinare: string;
     _links: {
-        self: {
-            href: string;
-        };
+        self: { href: string; method: string };
+        parent: { href: string; method: string };
+        update?: { href: string; method: string };
     };
 }
 
 interface LectureResponse {
     lectures: Lecture[];
     _links: {
-        self: {
-            href: string;
-        };
-        parent: {
-            href: string;
-        };
+        self: { href: string; method: string };
+        parent: { href: string; method: string };
+        create?: { href: string; method: string };
+        delete?: { href: string; method: string };
     };
 }
 
@@ -38,8 +36,6 @@ const MainPage: React.FC = () => {
     const navigate = useNavigate();
 
     const home_page_api = localStorage.getItem('homePage') || "";
-
-    console.log(home_page_api)
 
     useEffect(() => {
         const fetchLectures = async () => {
@@ -75,8 +71,8 @@ const MainPage: React.FC = () => {
     }, [navigate]);
 
     const handleViewLecture = (path: string) => {
-        const cod = path.split('/').pop()!
-        navigate(`/lecture/${cod}`, {state: { path }});
+        const cod = path.split('/').pop()!;
+        navigate(`/lecture/${cod}`, { state: { path } });
     };
 
     if (loading) {
@@ -87,10 +83,6 @@ const MainPage: React.FC = () => {
         return <div className="error">Error: {error}</div>;
     }
 
-    if(links?.parent) {
-        localStorage.setItem('profilePath', links?.parent.href);
-    }
-
     return (
         <div className="main-container">
             <NavBar />
@@ -98,13 +90,24 @@ const MainPage: React.FC = () => {
             <ul className="lecture-list">
                 {lectures.map((lecture) => (
                     <li key={lecture.cod} className="lecture-item">
-                        <h3>{lecture.nume_disciplina} - {lecture.cod}</h3>
+                        <h3>
+                            {lecture.nume_disciplina} - {lecture.cod}
+                        </h3>
                         <p><strong>Year of Study:</strong> {lecture.an_studiu}</p>
                         <p><strong>Subject Type:</strong> {lecture.tip_disciplina}</p>
                         <p><strong>Category:</strong> {lecture.categorie_disciplina}</p>
                         <p><strong>Examination Type:</strong> {lecture.tip_examinare}</p>
-                        <button className="view-lecture-button"
-                                onClick={() => handleViewLecture(lecture._links.self.href)}>
+
+                        {lecture._links.update && (
+                            <p className="coordinator-label">
+                                You are the coordinator of this lecture.
+                            </p>
+                        )}
+
+                        <button
+                            className="view-lecture-button"
+                            onClick={() => handleViewLecture(lecture._links.self.href)}
+                        >
                             View Lecture
                         </button>
                     </li>
