@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import {useLocation, useNavigate} from 'react-router-dom';
 import './main.css'; // Import the CSS file
 import NavBar from "../navBar/navBar";
 
@@ -35,7 +35,13 @@ const MainPage: React.FC = () => {
     const [error, setError] = useState<string>('');
     const navigate = useNavigate();
 
-    const home_page_api = localStorage.getItem('homePage') || "";
+    let home_page_api = ""
+    if (window.location.pathname === "/" || window.location.pathname === "/lectures") {
+        home_page_api = localStorage.getItem("homePage") || "";
+    } else if (window.location.pathname === "/my-lectures") {
+        home_page_api = localStorage.getItem("myLecturesAPI") || "";
+    }
+
 
     useEffect(() => {
         const fetchLectures = async () => {
@@ -43,6 +49,9 @@ const MainPage: React.FC = () => {
                 const token = localStorage.getItem('authToken');
                 if(!token)
                     navigate('/login')
+
+                console.log(window.location.pathname);
+
                 const response = await fetch(home_page_api, {
                     method: 'GET',
                     headers: {
@@ -58,6 +67,10 @@ const MainPage: React.FC = () => {
                 const data = await response.json();
                 setLectures(data["lectures"].lectures);
                 setLinks(data["lectures"]._links);
+
+                if(data.lectures._links.teacher_lectures)
+                    localStorage.setItem("myLecturesAPI", data.lectures._links.teacher_lectures.href)
+
             } catch (error) {
                 if (error instanceof Error) {
                     setError(error.message);
@@ -72,7 +85,7 @@ const MainPage: React.FC = () => {
 
     const handleViewLecture = (path: string) => {
         const cod = path.split('/').pop()!;
-        navigate(`/lecture/${cod}`, { state: { path } });
+        navigate(`/lectures/${cod}`, { state: { path } });
     };
 
     if (loading) {

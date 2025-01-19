@@ -39,7 +39,7 @@ const NavBar: React.FC = () => {
     };
 
     const goToMainPage = () => {
-        navigate('/');
+        navigate('/lectures');
     };
 
     const handleProfile = () => {
@@ -49,20 +49,28 @@ const NavBar: React.FC = () => {
     return (
         <nav className="navbar">
             <div className="navbar-left">
-                <button className="navbar-button" onClick={goToMainPage}>
-                    Main Page
-                </button>
+                <div className="button-group">
+                    <button className="navbar-button" onClick={goToMainPage}>
+                        Main Page
+                    </button>
+                    {localStorage.getItem("myLecturesAPI") && localStorage.getItem("myLecturesAPI") !== "" && (
+                        <button className="navbar-button"
+                                onClick={() => {navigate(`/my-lectures`); window.location.reload() }}>My Lectures</button>
+                    )}
+                </div>
             </div>
             <div className="navbar-center">
                 <h1 className="navbar-title">Academia</h1>
             </div>
             <div className="navbar-right">
-                <button className="navbar-button profile-button" onClick={handleProfile}>
-                    Profile
-                </button>
-                <button className="navbar-button logout-button" onClick={handleLogout}>
-                    Logout
-                </button>
+                <div className="button-group">
+                    <button className="navbar-button profile-button" onClick={handleProfile}>
+                        Profile
+                    </button>
+                    <button className="navbar-button logout-button" onClick={handleLogout}>
+                        Logout
+                    </button>
+                </div>
             </div>
         </nav>
     );

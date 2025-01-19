@@ -5,7 +5,14 @@
     font-family: 'Roboto', sans-serif;
 }
 
-.back-button {
+.button-group {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 30px;
+}
+
+.back-button,
+.enrolled-students-button {
     background-color: #007BFF;
     color: white;
     padding: 12px 25px;
@@ -13,16 +20,17 @@
     border-radius: 5px;
     font-size: 1.1rem;
     cursor: pointer;
-    margin-bottom: 30px;
     transition: background-color 0.3s ease, transform 0.2s ease;
 }
 
-.back-button:hover {
+.back-button:hover,
+.enrolled-students-button:hover {
     background-color: #0056b3;
     transform: translateY(-2px);
 }
 
-.back-button:focus {
+.back-button:focus,
+.enrolled-students-button:focus {
     outline: none;
 }
 

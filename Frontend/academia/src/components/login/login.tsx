@@ -73,7 +73,7 @@ const Login: React.FC = () => {
         localStorage.setItem("homePage", mainPage);
         localStorage.setItem("profilePath", profilePage)
         setError('');
-        navigate('/');
+        navigate('/lectures');
     };
 
     const handleLogin = async () => {

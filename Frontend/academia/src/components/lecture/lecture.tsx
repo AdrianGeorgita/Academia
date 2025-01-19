@@ -53,6 +53,7 @@ const LecturePage: React.FC = () => {
     const [selectedLabFile, setSelectedLabFile] = useState<File | null>(null);
     const [fileUploadError, setFileUploadError] = useState<string>('');
     const [noData, setNoData] = useState<boolean>(true);
+    const [studentsAPI, setStudentsAPI] = useState<string>('');
 
     const [finalExam, setFinalExam] = useState<number>(0.5);
     const [labActivity, setLabActivity] = useState<number>(0.5);
@@ -88,6 +89,9 @@ const LecturePage: React.FC = () => {
                 }
 
                 const data = await response.json();
+
+                console.log(data);
+
                 setLectureDetails(data);
 
                 if(data.materials?.materials == null)
@@ -95,6 +99,12 @@ const LecturePage: React.FC = () => {
                 else
                     setNoData(false);
 
+                console.log(data);
+
+                if(data._links.students) {
+                    setStudentsAPI(data._links.students)
+                    localStorage.setItem("enrolledStudents", data._links.students.href);
+                }
 
                 if (data.materials?.materials?.["probe-evaluare"]) {
                     setFinalExam(data.materials.materials["probe-evaluare"]["examinare-finala"]);
@@ -113,7 +123,6 @@ const LecturePage: React.FC = () => {
 
         fetchLectureDetails();
     }, [path, cod, navigate]);
-
     const handleCourseFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files) {
             setSelectedCourseFile(e.target.files[0]);
@@ -385,7 +394,13 @@ const LecturePage: React.FC = () => {
         <div>
             <NavBar />
             <div className="lecture-page-container">
-                <button className="back-button" onClick={() => navigate('/')}>Back to Main</button>
+                <div className="button-group">
+                    <button className="back-button" onClick={() => navigate('/lectures')}>Back to Main</button>
+                    {studentsAPI && (
+                        <button className="enrolled-students-button"
+                                onClick={() => navigate(`/lectures/${cod}/students`)}>Enrolled Students</button>
+                    )}
+                </div>
 
                 <div className="section-container lecture-details">
                     <h1>{lectureDetails.lecture.nume_disciplina}</h1>
@@ -438,7 +453,7 @@ const LecturePage: React.FC = () => {
                                     <p><strong>File Name:</strong></p>
                                     <button className="download-btn"
                                             onClick={() => handleDownloadPDF(material.content, material["nume-fisier"])}>{material["nume-fisier"]}</button>
-                                    {lectureDetails?.materials?._links?.delete && (
+                                    {lectureDetails?.materials?._links?.update && (
                                         <button className="delete-btn"
                                                 onClick={() => handleDeleteMaterial('course', material["nume-fisier"])}>Delete</button>
                                     )}
@@ -451,7 +466,9 @@ const LecturePage: React.FC = () => {
                     {lectureDetails?.materials?._links?.update && (
                         <>
                             <input type="file" onChange={handleCourseFileChange}/>
-                            <button className="upload-btn" onClick={() => handleUpload('course')}>Upload Course Material</button>
+                            <button className="upload-btn" onClick={() => handleUpload('course')}>Upload Course
+                                Material
+                            </button>
                         </>
                     )}
                 </div>
@@ -465,7 +482,7 @@ const LecturePage: React.FC = () => {
                                     <p><strong>File Name:</strong></p>
                                     <button className="download-btn"
                                             onClick={() => handleDownloadPDF(material.content, material["nume-fisier"])}>{material["nume-fisier"]}</button>
-                                    {lectureDetails?.materials?._links?.delete && (
+                                    {lectureDetails?.materials?._links?.update && (
                                         <button className="delete-btn"
                                                 onClick={() => handleDeleteMaterial('lab', material["nume-fisier"])}>Delete</button>
                                     )}
@@ -478,7 +495,8 @@ const LecturePage: React.FC = () => {
                     {lectureDetails?.materials?._links?.update && (
                         <>
                             <input type="file" onChange={handleLabFileChange}/>
-                            <button className="upload-btn" onClick={() => handleUpload('lab')}>Upload Lab Material</button>
+                            <button className="upload-btn" onClick={() => handleUpload('lab')}>Upload Lab Material
+                            </button>
                         </>
                     )}
                 </div>

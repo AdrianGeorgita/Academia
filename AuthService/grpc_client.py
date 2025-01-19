@@ -14,7 +14,9 @@ from fastapi.middleware.cors import CORSMiddleware
 app = FastAPI()
 
 origins = [
-    "http://localhost",
+    "http://localhost:8000",
+    "http://localhost:8004",
+    "http://localhost:8008",
     "http://localhost:3000",
 ]
 
@@ -22,8 +24,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["POST"],
+    allow_headers=["authorization", "content-type"],
 )
 
 email_regex = "^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$"

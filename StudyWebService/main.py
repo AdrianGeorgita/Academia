@@ -21,7 +21,9 @@ db = MySQLDatabase(database='study_service_db', user='posadmin', passwd='passwdp
 app = FastAPI()
 
 origins = [
-    "http://localhost",
+    "http://localhost:8000",
+    "http://localhost:8004",
+    "http://localhost:8008",
     "http://localhost:3000",
 ]
 
@@ -29,8 +31,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "PUT", "POST", "DELETE"],
+    allow_headers=["authorization", "content-type"],
 )
 
 db.connect()
@@ -351,8 +353,7 @@ def read_teacher_lectures(
         lecture_dict = model_to_dict(lecture)
         teacher_lectures.append(lecture_dict)
 
-    return {
-        "lectures": {
+    lectures = {
             "lectures": teacher_lectures,
             "_links": {
                 "self": {
@@ -365,6 +366,29 @@ def read_teacher_lectures(
                 }
             }
         }
+
+    for lecture in teacher_lectures:
+        lecture["_links"] = {
+            "self": {
+                "href": request.url.path + f"/{lecture['cod']}",
+                "method": "GET",
+            },
+            "parent": {
+                "href": request.url.path,
+                "method": "GET",
+            },
+            "update": {
+                "href": request.url.path,
+                "method": "PUT",
+            },
+            "students": {
+                "href": f"/api/academia/students?lecture_code={lecture['cod']}",
+                "method": "GET",
+            },
+        }
+
+    return {
+        "lectures": lectures
     }
 
 
@@ -422,9 +446,14 @@ def read_teacher_lecture(
                     "method": "PUT",
                 },
                 "create": {
-                    "href": request.url.path,
+                    "href": '/'.join(request.url.path.split('/')[:-1]),
                     "method": "POST",
                 },
+                "students": {
+                    "href": f"/api/academia/students?lecture_code={lecture_code}",
+                    "method": "GET",
+                },
+
             }
         }
 
@@ -581,8 +610,8 @@ def update_teacher(
     if not Teacher.get_or_none(Teacher.id == teacher_id):
         response.status_code = 201
         resource = {
-            "nume": firstName,
-            "prenume": lastName,
+            "nume": lastName,
+            "prenume": firstName,
             "email": email,
             "grad_didactic": teachingDegree.value,
             "tip_asociere": associationType.value,
@@ -665,12 +694,13 @@ def read_students(
         year: Union[str, None] = None,
         email: Union[str, None] = None,
         group: Union[str, None] = None,
+        lecture_code: Union[str, None] = None,
         page: int = 1,
         items_per_page: int = 10,
 ):
 
     role, user_id = ValidateIdentity(authorization)
-    if role not in ["admin"]:
+    if role not in ["admin"] and lecture_code is None:
         raise HTTPException(status_code=403, detail="You aren't authorized to access this resource")
 
     if name:
@@ -685,6 +715,46 @@ def read_students(
         res = Student.select().where(Student.an_studiu.contains(year)).order_by(Student.prenume)
     elif group:
         res = Student.select().where(Student.grupa.contains(group)).order_by(Student.prenume)
+    elif lecture_code:
+        if lecture_code is not None and role not in ["profesor", "admin"]:
+            raise HTTPException(status_code=403, detail="You aren't authorized to access this resource")
+
+        student_lectures_res = Student_Disciplina.select().where(Student_Disciplina.DisciplinaID == lecture_code)
+
+        if student_lectures_res.count() == 0:
+            raise HTTPException(status_code=404, detail="No students found for this lecture")
+
+        total_items = student_lectures_res.count()
+        start_index = (page - 1) * items_per_page
+        end_index = start_index + items_per_page
+
+        if start_index >= total_items:
+            raise HTTPException(status_code=416, detail={"max_page": math.ceil(total_items / items_per_page),
+                                                         "items_per_page": items_per_page})
+
+        student_lectures_res = student_lectures_res.limit(items_per_page).offset(start_index)
+
+        students = []
+        for student_lecture in student_lectures_res:
+            student = Student.select().where(Student.id == student_lecture.StudentID).get()
+            student_dict = model_to_dict(student)
+            student_dict["_links"] = {
+                "self": {
+                    "href": request.url.path + f"/{student.id}",
+                    "method": "GET",
+                },
+                "parent": {
+                    "href": request.url.path,
+                    "method": "GET",
+                },
+                "create": {
+                    "href": request.url.path,
+                    "method": "POST",
+                },
+            }
+            students.append(student_dict)
+
+        return {"students": students}
     else:
         res = Student.select()
 
@@ -1135,6 +1205,10 @@ def read_lectures(
                     "href": request.url.path,
                     "method": "POST",
                 },
+                "teacher_lectures": {
+                    "href": f"http://localhost:8000/api/academia/teachers/{user_id}/lectures",
+                    "method": "POST",
+                },
             }
         }
     }
@@ -1188,6 +1262,10 @@ def read_lecture(lecture_code: str, request: Request, authorization: Annotated[s
         lecture["_links"]["update"] = {
             "href": request.url.path,
             "method": "PUT",
+        }
+        lecture["_links"]["students"] = {
+            "href": f"/api/academia/students?lecture_code={lecture_code}",
+            "method": "GET",
         }
 
     return lecture
