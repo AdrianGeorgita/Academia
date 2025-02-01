@@ -1,0 +1,112 @@
+services:
+  auth_service:
+    container_name: auth_service
+    build:
+      context: ./AuthService
+    restart: on-failure
+    ports:
+      - "0.0.0.0:50051:50051"
+      - "0.0.0.0:8008:8008"
+    depends_on:
+      - auth_db
+    networks:
+      - app_network
+    environment:
+      - DATABASE_URL=mariadb://authAdmin:passwdauth@auth_db/auth_service_db
+
+  study_web_service:
+    container_name: study_service
+    build:
+      context: ./StudyWebService
+    restart: on-failure
+    ports:
+      - "0.0.0.0:8000:8000"
+    depends_on:
+      - study_db
+    networks:
+      - app_network
+    environment:
+      - DATABASE_URL=mariadb://posadmin:passwdpos@study_db/study_service_db
+
+  lectures_web_service:
+    container_name: lectures_service
+    build:
+      context: ./LecturesWebService
+    ports:
+      - "0.0.0.0:8004:8004"
+    depends_on:
+      - lectures_db
+    networks:
+      - app_network
+    environment:
+      - MONGO_HOST=${MONGO_HOST}
+      - MONGO_PORT=${MONGO_PORT}
+      - MONGO_USER=${MONGO_USER}
+      - MONGO_PASSWORD=${MONGO_PASSWORD}
+
+  auth_db:
+    container_name: auth_db
+    image: mariadb:latest
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: passwdauth
+      MYSQL_USER: authAdmin
+      MYSQL_PASSWORD: passwdauth
+      MYSQL_DATABASE: auth_service_db
+      MYSQL_TCP_PORT: 3308
+    ports:
+      - "0.0.0.0:3308:3308"
+    networks:
+      - app_network
+    volumes:
+      - auth_db_data:/var/lib/mysql
+      - ./Databases/initAuthDB.sql:/docker-entrypoint-initdb.d/init.sql
+
+  study_db:
+    container_name: study_db
+    image: mariadb:latest
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: passwdroot
+      MYSQL_USER: posadmin
+      MYSQL_PASSWORD: passwdpos
+      MYSQL_DATABASE: study_service_db
+      #MYSQL_TCP_PORT: 3350
+    ports:
+      - "0.0.0.0:3306:3306"
+    networks:
+      - app_network
+    volumes:
+      - study_db_data:/var/lib/mysql
+      - ./Databases/initStudyDB.sql:/docker-entrypoint-initdb.d/init.sql
+
+  lectures_db:
+    container_name: lectures_db
+    image: mongo:latest
+    restart: always
+    ports:
+      - "27017:27017"
+    networks:
+      - app_network
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_INITDB_ROOT_USERNAME}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_INITDB_ROOT_PASSWORD}
+      - MONGO_INITDB_DATABASE=${MONGO_DB}
+    volumes:
+      - lectures_db_data:/data/db
+      - ./Databases/MongoInit/mongodb.conf:/etc/mongo/mongod.conf:ro
+      - ./Databases/MongoInit/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+    command:
+      - "--config"
+      - "/etc/mongo/mongod.conf"
+    security_opt:
+      - no-new-privileges:true
+
+networks:
+  app_network:
+    driver: bridge
+
+volumes:
+  auth_db_data:
+  study_db_data:
+  lectures_db_data:

@@ -1,0 +1,44 @@
+.main-container {
+    padding: 20px;
+    font-family: Arial, sans-serif;
+}
+
+.page-title {
+    font-size: 2rem;
+    color: #2c3e50;
+}
+
+.loading,
+.error {
+    font-size: 1.2rem;
+    color: #e74c3c;
+    text-align: center;
+}
+
+.student-list {
+    list-style-type: none;
+    padding: 0;
+}
+
+.student-item {
+    border: 1px solid #ccc;
+    margin-bottom: 15px;
+    padding: 15px;
+    border-radius: 8px;
+    background-color: #f9f9f9;
+}
+
+.student-item p {
+    margin: 5px 0;
+    font-size: 1rem;
+}
+
+.student-item a {
+    color: #3498db;
+    text-decoration: none;
+}
+
+.student-item a:hover {
+    text-decoration: underline;
+}
+
