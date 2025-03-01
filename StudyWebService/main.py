@@ -125,6 +125,8 @@ class LectureExamination(Enum):
     COLOCVIU = "colocviu"
     EXAMEN = "examen"
 
+MAX_ITEMS_PER_PAGE = 100
+
 
 def ValidateIdentity(token: str):
     if not token.startswith("Bearer "):
@@ -212,48 +214,73 @@ def read_teachers(
     if role not in ["admin"]:
         raise HTTPException(status_code=403, detail="You aren't authorized to access this resource")
 
+    if page < 1:
+        raise HTTPException(status_code=422, detail="Page number must be positive!")
+    if items_per_page < 1 or items_per_page > MAX_ITEMS_PER_PAGE:
+        raise HTTPException(status_code=422, detail="Items per page must be positive and smaller than 100!")
+
+    filters = []
     if name:
-        res = Teacher.select().where(Teacher.nume.contains(name)).order_by(Teacher.prenume)
-    elif surname:
-        res = Teacher.select().where(Teacher.prenume.contains(surname)).order_by(Teacher.prenume)
-    elif email:
-        res = Teacher.select().where(Teacher.email.contains(email)).order_by(Teacher.prenume)
-    elif teachingDegree:
-        res = Teacher.select().where(Teacher.grad_didactic.contains(teachingDegree)).order_by(Teacher.prenume)
-    elif associationType:
-        res = Teacher.select().where(Teacher.tip_asociere.contains(associationType)).order_by(Teacher.prenume)
-    elif affiliation:
-        res = Teacher.select().where(Teacher.afiliere.contains(affiliation)).order_by(Teacher.prenume)
-    else:
-        res = Teacher.select()
+        filters.append(Teacher.nume.contains(name.strip()))
+    if surname:
+        filters.append(Teacher.prenume.contains(surname.strip()))
+    if email:
+        filters.append(Teacher.email.contains(email.strip()))
+    if teachingDegree:
+        filters.append(Teacher.grad_didactic.contains(teachingDegree.strip()))
+    if associationType:
+        filters.append(Teacher.tip_asociere.contains(associationType.strip()))
+    if affiliation:
+        filters.append(Teacher.afiliere.contains(affiliation.strip()))
+
+    res = Teacher.select().where(*filters).order_by(Teacher.prenume) if filters else Teacher.select()
 
     total_teachers = res.count()
     start_index = (page - 1) * items_per_page
     end_index = start_index + items_per_page
+    total_pages = math.ceil(total_teachers / items_per_page)
 
     if start_index >= total_teachers:
-        raise HTTPException(status_code=416, detail={"max_page": math.ceil(total_teachers / items_per_page),
+        raise HTTPException(status_code=416, detail={"max_page": total_pages,
                                                       "items_per_page": items_per_page})
 
     res = res.limit(items_per_page).offset(start_index)
 
+    links = {
+        "self": {
+            "href": request.url.path,
+            "method": "GET",
+        },
+        "parent": {
+            "href": '/'.join(request.url.path.split('/')[:-1]),
+            "method": "GET",
+        },
+        "create": {
+            "href": request.url.path,
+            "method": "POST",
+        },
+    }
+
+    if page > 1:
+        links["first_page"] = {
+            "href": f"{request.url.path}?page=1&items_per_page={items_per_page}",
+            "method": "GET"
+        }
+        links["previous_page"] = {
+            "href": f"{request.url.path}?page={page - 1}&items_per_page={items_per_page}",
+            "method": "GET"
+        }
+
+    if page < total_pages:
+        links["next_page"] = {"href": f"{request.url.path}?page={page + 1}&items_per_page={items_per_page}",
+                              "method": "GET"}
+        links["last_page"] = {"href": f"{request.url.path}?page={total_pages}&items_per_page={items_per_page}",
+                              "method": "GET"}
+
     teachers = []
     for teacher in res:
         teacher_dict = model_to_dict(teacher)
-        teacher_dict["_links"] = {
-            "self": {
-                "href": request.url.path,
-                "method": "GET",
-            },
-            "parent": {
-                "href": '/'.join(request.url.path.split('/')[:-1]),
-                "method": "GET",
-            },
-            "create": {
-                "href": request.url.path,
-                "method": "POST",
-            },
-        }
+        teacher_dict["_links"] = links
         teachers.append(teacher_dict)
 
     return {"teachers": teachers}
@@ -267,14 +294,17 @@ def read_teachers(
     )
 )
 def read_teacher(teacher_id: int, request: Request, authorization: Annotated[str, Header()]):
+    role, user_id = ValidateIdentity(authorization)
+    if (role not in ["profesor"]) or (teacher_id != int(user_id)):
+        raise HTTPException(status_code=403, detail="You aren't authorized to access this resource")
+
+    if teacher_id < 1:
+        raise HTTPException(status_code=422, detail="Teacher ID must be a positive integer")
+
     try:
         teacher = Teacher.select().where(Teacher.id == teacher_id).get()
     except:
         raise HTTPException(status_code=404, detail="Teacher not found")
-
-    role, user_id = ValidateIdentity(authorization)
-    if (role not in ["profesor"]) or (teacher_id != int(user_id)):
-        raise HTTPException(status_code=403, detail="You aren't authorized to access this resource")
 
     return {
         "teacher": {
@@ -331,6 +361,14 @@ def read_teacher_lectures(
     if (role not in ["profesor"]) or (teacher_id != int(user_id)):
         raise HTTPException(status_code=403, detail="You aren't authorized to access this resource")
 
+    if page < 1:
+        raise HTTPException(status_code=422, detail="Page number must be positive!")
+    if items_per_page < 1 or items_per_page > MAX_ITEMS_PER_PAGE:
+        raise HTTPException(status_code=422, detail="Items per page must be positive and smaller than 100!")
+
+    if teacher_id < 1:
+        raise HTTPException(status_code=422, detail="Teacher ID must be a positive integer.")
+
     try:
         teacher = Teacher.select().where(Teacher.id == teacher_id).get()
     except:
@@ -341,9 +379,10 @@ def read_teacher_lectures(
     total_items = teacher_lectures_res.count()
     start_index = (page - 1) * items_per_page
     end_index = start_index + items_per_page
+    total_pages = math.ceil(total_items / items_per_page)
 
     if start_index >= total_items:
-        raise HTTPException(status_code=416, detail={"max_page": math.ceil(total_items / items_per_page),
+        raise HTTPException(status_code=416, detail={"max_page": total_pages,
                                                       "items_per_page": items_per_page})
 
     teacher_lectures_res = teacher_lectures_res.limit(items_per_page).offset(start_index)
@@ -353,19 +392,41 @@ def read_teacher_lectures(
         lecture_dict = model_to_dict(lecture)
         teacher_lectures.append(lecture_dict)
 
-    lectures = {
-            "lectures": teacher_lectures,
-            "_links": {
-                "self": {
-                    "href": request.url.path,
-                    "method": "GET",
-                },
-                "parent": {
-                    "href": '/'.join(request.url.path.split('/')[:-1]),
-                    "method": "GET",
-                }
-            }
+    links = {
+        "self": {
+            "href": request.url.path,
+            "method": "GET",
+        },
+        "parent": {
+            "href": '/'.join(request.url.path.split('/')[:-1]),
+            "method": "GET",
         }
+    }
+
+    if page > 1:
+        links["first_page"] = {
+            "href": f"{request.url.path}?page=1&items_per_page={items_per_page}",
+            "method": "GET"
+        }
+        links["previous_page"] = {
+            "href": f"{request.url.path}?page={page - 1}&items_per_page={items_per_page}",
+            "method": "GET"
+        }
+
+    if page < total_pages:
+        links["next_page"] = {
+            "href": f"{request.url.path}?page={page + 1}&items_per_page={items_per_page}",
+            "method": "GET"
+        }
+        links["last_page"] = {
+            "href": f"{request.url.path}?page={total_pages}&items_per_page={items_per_page}",
+            "method": "GET"
+        }
+
+    lectures = {
+        "lectures": teacher_lectures,
+        "_links": links
+    }
 
     for lecture in teacher_lectures:
         lecture["_links"] = {
@@ -410,12 +471,15 @@ def read_teacher_lecture(
     if (role not in ["profesor"]) or (teacher_id != int(user_id)):
         raise HTTPException(status_code=403, detail="You aren't authorized to access this resource")
 
+    if teacher_id < 1:
+        raise HTTPException(status_code=422, detail="Teacher ID must be a positive integer.")
+
     try:
         teacher = Teacher.select().where(Teacher.id == teacher_id).get()
     except:
         raise HTTPException(status_code=404, detail="Teacher not found")
 
-    teacher_lecture = Lecture.select().where((Lecture.id_titular == teacher.id) & (Lecture.cod == lecture_code))
+    teacher_lecture = Lecture.select().where((Lecture.id_titular == teacher.id) & (Lecture.cod == lecture_code.strip()))
 
     if teacher_lecture.count() != 1:
         raise HTTPException(status_code=404, detail=f"Lecture not Found or teacher not assigned to the lecture!")
@@ -471,7 +535,6 @@ def read_teacher_lecture(
 def update_lecture_materials(
         teacher_id: int,
         lecture_code: str,
-        request: Request,
         authorization: Annotated[str, Header()],
         materials: dict = Body(...),
 ):
@@ -479,11 +542,14 @@ def update_lecture_materials(
     if role == "student" or (role == "profesor" and teacher_id != int(user_id)):
         raise HTTPException(status_code=403, detail="You aren't authorized to update this resource")
 
+    if teacher_id < 1:
+        raise HTTPException(status_code=422, detail="Teacher ID must be a positive integer.")
+
     teacher = Teacher.select().where(Teacher.id == teacher_id).get()
     if not teacher:
         raise HTTPException(status_code=404, detail="Teacher not found")
 
-    teacher_lecture = Lecture.select().where((Lecture.id_titular == teacher.id) & (Lecture.cod == lecture_code))
+    teacher_lecture = Lecture.select().where((Lecture.id_titular == teacher.id) & (Lecture.cod == lecture_code.strip()))
 
     if teacher_lecture.count() != 1:
         raise HTTPException(status_code=404, detail=f"Lecture not Found or teacher not assigned to the lecture!")
@@ -511,7 +577,6 @@ def update_lecture_materials(
 def add_lecture_materials(
         teacher_id: int,
         lecture_code: str,
-        request: Request,
         authorization: Annotated[str, Header()],
         materials: dict = Body(...),
 ):
@@ -519,11 +584,14 @@ def add_lecture_materials(
     if role == "student" or (role == "profesor" and teacher_id != int(user_id)):
         raise HTTPException(status_code=403, detail="You aren't authorized to post this resource")
 
+    if teacher_id < 1:
+        raise HTTPException(status_code=422, detail="Teacher ID must be a positive integer.")
+
     teacher = Teacher.select().where(Teacher.id == teacher_id).get()
     if not teacher:
         raise HTTPException(status_code=404, detail="Teacher not found")
 
-    teacher_lecture = Lecture.select().where((Lecture.id_titular == teacher.id) & (Lecture.cod == lecture_code))
+    teacher_lecture = Lecture.select().where((Lecture.id_titular == teacher.id) & (Lecture.cod == lecture_code.strip()))
 
     if teacher_lecture.count() != 1:
         raise HTTPException(status_code=404, detail=f"Lecture not Found or Teacher not assigned to the lecture!")
@@ -567,12 +635,12 @@ def add_teacher(
             return {"error": "Invalid email"}
 
         resource = {
-            "nume": firstName,
-            "prenume": lastName,
-            "email": email,
-            "grad_didactic": teachingDegree.value,
-            "tip_asociere": associationType.value,
-            "afiliere": affiliation
+            "nume": firstName.strip(),
+            "prenume": lastName.strip(),
+            "email": email.strip(),
+            "grad_didactic": teachingDegree.value.strip(),
+            "tip_asociere": associationType.value.strip(),
+            "afiliere": affiliation.strip()
         }
 
         res = Teacher.insert(resource).execute()
@@ -603,6 +671,9 @@ def update_teacher(
     if role == "student" or (role == "profesor" and teacher_id != int(user_id)):
         raise HTTPException(status_code=403, detail="You aren't authorized to update this resource")
 
+    if teacher_id < 1:
+        raise HTTPException(status_code=422, detail="Teacher ID must be a positive integer.")
+
     if not match(email_regex, email):
         response.status_code = 422
         return {"error": "Invalid email"}
@@ -610,24 +681,24 @@ def update_teacher(
     if not Teacher.get_or_none(Teacher.id == teacher_id):
         response.status_code = 201
         resource = {
-            "nume": lastName,
-            "prenume": firstName,
-            "email": email,
-            "grad_didactic": teachingDegree.value,
-            "tip_asociere": associationType.value,
-            "afiliere": affiliation
+            "nume": lastName.strip(),
+            "prenume": firstName.strip(),
+            "email": email.strip(),
+            "grad_didactic": teachingDegree.value.strip(),
+            "tip_asociere": associationType.value.strip(),
+            "afiliere": affiliation.strip()
         }
         res = Teacher.insert(resource).execute()
         return {"id": res, **resource}
     else:
         response.status_code = 204
         res = Teacher.update({
-            "nume": firstName,
-            "prenume": lastName,
-            "email": email,
-            "grad_didactic": teachingDegree.value,
-            "tip_asociere": associationType.value,
-            "afiliere": affiliation
+            "nume": firstName.strip(),
+            "prenume": lastName.strip(),
+            "email": email.strip(),
+            "grad_didactic": teachingDegree.value.strip(),
+            "tip_asociere": associationType.value.strip(),
+            "afiliere": affiliation.strip()
         }).where(Teacher.id == teacher_id).execute()
 
         if response.status_code == 201 and res != 1:
@@ -650,6 +721,9 @@ def delete_teacher(
     role, user_id = ValidateIdentity(authorization)
     if role != "admin":
         raise HTTPException(status_code=403, detail="You aren't authorized to delete this resource")
+
+    if teacher_id < 1:
+        raise HTTPException(status_code=422, detail="Teacher ID must be a positive integer.")
 
     res = Teacher.select().where(Teacher.id == teacher_id)
 
@@ -691,9 +765,9 @@ def read_students(
         name: Union[str, None] = None,
         surname: Union[str, None] = None,
         degree: Union[str, None] = None,
-        year: Union[str, None] = None,
+        year: Union[int, None] = None,
         email: Union[str, None] = None,
-        group: Union[str, None] = None,
+        group: Union[int, None] = None,
         lecture_code: Union[str, None] = None,
         page: int = 1,
         items_per_page: int = 10,
@@ -703,19 +777,32 @@ def read_students(
     if role not in ["admin"] and lecture_code is None:
         raise HTTPException(status_code=403, detail="You aren't authorized to access this resource")
 
+    if year is not None and year < 1:
+        raise HTTPException(status_code=422, detail="Year must be a positive integer.")
+
+    if group is not None and group < 1:
+        raise HTTPException(status_code=422, detail="Group must be a positive integer.")
+
+    if page < 1:
+        raise HTTPException(status_code=422, detail="Page number must be positive!")
+    if items_per_page < 1 or items_per_page > MAX_ITEMS_PER_PAGE:
+        raise HTTPException(status_code=422, detail="Items per page must be positive and smaller than 100!")
+
+    filters = []
     if name:
-        res = Student.select().where(Student.prenume.contains(name)).order_by(Student.nume)
-    elif surname:
-        res = Student.select().where(Student.nume.contains(surname)).order_by(Student.prenume)
-    elif email:
-        res = Student.select().where(Student.email.contains(email)).order_by(Student.prenume)
-    elif degree:
-        res = Student.select().where(Student.ciclu_studii.contains(degree)).order_by(Student.prenume)
-    elif year:
-        res = Student.select().where(Student.an_studiu.contains(year)).order_by(Student.prenume)
-    elif group:
-        res = Student.select().where(Student.grupa.contains(group)).order_by(Student.prenume)
-    elif lecture_code:
+        filters.append(Student.prenume.contains(name.strip()))
+    if surname:
+        filters.append(Student.nume.contains(surname.strip()))
+    if email:
+        filters.append(Student.email.contains(email.strip()))
+    if degree:
+        filters.append(Student.ciclu_studii.contains(degree.strip()))
+    if year:
+        filters.append(Student.an_studiu == year)
+    if group:
+        filters.append(Student.grupa.contains(group))
+
+    if lecture_code:
         if lecture_code is not None and role not in ["profesor", "admin"]:
             raise HTTPException(status_code=403, detail="You aren't authorized to access this resource")
 
@@ -724,70 +811,66 @@ def read_students(
         if student_lectures_res.count() == 0:
             raise HTTPException(status_code=404, detail="No students found for this lecture")
 
-        total_items = student_lectures_res.count()
-        start_index = (page - 1) * items_per_page
-        end_index = start_index + items_per_page
+        filters.append(Student.id.in_([student_lecture.StudentID for student_lecture in student_lectures_res]))
 
-        if start_index >= total_items:
-            raise HTTPException(status_code=416, detail={"max_page": math.ceil(total_items / items_per_page),
-                                                         "items_per_page": items_per_page})
-
-        student_lectures_res = student_lectures_res.limit(items_per_page).offset(start_index)
-
-        students = []
-        for student_lecture in student_lectures_res:
-            student = Student.select().where(Student.id == student_lecture.StudentID).get()
-            student_dict = model_to_dict(student)
-            student_dict["_links"] = {
-                "self": {
-                    "href": request.url.path + f"/{student.id}",
-                    "method": "GET",
-                },
-                "parent": {
-                    "href": request.url.path,
-                    "method": "GET",
-                },
-                "create": {
-                    "href": request.url.path,
-                    "method": "POST",
-                },
-            }
-            students.append(student_dict)
-
-        return {"students": students}
+    if filters:
+        res = Student.select().where(*filters).order_by(Student.prenume)
     else:
-        res = Student.select()
+        res = Student.select().order_by(Student.prenume)
 
     if not res:
         raise HTTPException(status_code=404, detail="Students not found")
 
     total_items = res.count()
+    total_pages = math.ceil(total_items / items_per_page)
     start_index = (page - 1) * items_per_page
     end_index = start_index + items_per_page
 
     if start_index >= total_items:
-        raise HTTPException(status_code=416, detail={"max_page": math.ceil(total_items / items_per_page),
+        raise HTTPException(status_code=416, detail={"max_page": total_pages,
                                                       "items_per_page": items_per_page})
 
     res = res.limit(items_per_page).offset(start_index)
 
+    links = {
+        "self": {
+            "href": request.url.path,
+            "method": "GET",
+        },
+        "parent": {
+            "href": '/'.join(request.url.path.split('/')[:-1]),
+            "method": "GET",
+        },
+        "create": {
+            "href": request.url.path,
+            "method": "POST",
+        },
+    }
+
+    if page > 1:
+        links["first_page"] = {
+            "href": f"{request.url.path}?page=1&items_per_page={items_per_page}",
+            "method": "GET"
+        }
+        links["previous_page"] = {
+            "href": f"{request.url.path}?page={page - 1}&items_per_page={items_per_page}",
+            "method": "GET"
+        }
+
+    if page < total_pages:
+        links["next_page"] = {
+            "href": f"{request.url.path}?page={page + 1}&items_per_page={items_per_page}",
+            "method": "GET"
+        }
+        links["last_page"] = {
+            "href": f"{request.url.path}?page={total_pages}&items_per_page={items_per_page}",
+            "method": "GET"
+        }
+
     students = []
     for student in res:
         student_dict = model_to_dict(student)
-        student_dict["_links"] = {
-            "self": {
-                "href": request.url.path,
-                "method": "GET",
-            },
-            "parent": {
-                "href": '/'.join(request.url.path.split('/')[:-1]),
-                "method": "GET",
-            },
-            "create": {
-                "href": request.url.path,
-                "method": "POST",
-            },
-        }
+        student_dict["_links"] = links
         students.append(student_dict)
 
     return {"students": students}
@@ -805,6 +888,9 @@ def read_student(student_id: int, request: Request, authorization: Annotated[str
     role, user_id = ValidateIdentity(authorization)
     if (role not in ["admin"]) and (student_id != int(user_id)):
         raise HTTPException(status_code=403, detail="You aren't authorized to access this resource")
+
+    if student_id < 1:
+        raise HTTPException(status_code=422, detail="Student ID must be a positive integer.")
 
     try:
         student = Student.select().where(Student.id == student_id).get()
@@ -867,6 +953,14 @@ def read_student_lectures(
     if (role != "student") or (student_id != int(user_id)):
         raise HTTPException(status_code=403, detail="You aren't authorized to access this resource")
 
+    if student_id < 1:
+        raise HTTPException(status_code=422, detail="Student ID must be a positive integer.")
+
+    if page < 1:
+        raise HTTPException(status_code=422, detail="Page number must be positive!")
+    if items_per_page < 1 or items_per_page > MAX_ITEMS_PER_PAGE:
+        raise HTTPException(status_code=422, detail="Items per page must be positive and smaller than 100!")
+
     try:
         student = Student.select().where(Student.id == student_id).get()
     except:
@@ -875,11 +969,12 @@ def read_student_lectures(
     student_lectures_res = Student_Disciplina.select().where(Student_Disciplina.StudentID == student.id)
 
     total_items = student_lectures_res.count()
+    total_pages = math.ceil(total_items / items_per_page)
     start_index = (page - 1) * items_per_page
     end_index = start_index + items_per_page
 
     if start_index >= total_items:
-        raise HTTPException(status_code=416, detail={"max_page": math.ceil(total_items / items_per_page),
+        raise HTTPException(status_code=416, detail={"max_page": total_pages,
                                                       "items_per_page": items_per_page})
 
     student_lectures_res = student_lectures_res.limit(items_per_page).offset(start_index)
@@ -889,6 +984,37 @@ def read_student_lectures(
         lecture = Lecture.select().where(Lecture.cod == student_lecture).get()
         lecture_dict = model_to_dict(lecture)
         student_lectures.append(lecture_dict)
+
+    links = {
+        "self": {
+            "href": request.url.path,
+            "method": "GET",
+        },
+        "parent": {
+            "href": '/'.join(request.url.path.split('/')[:-1]),
+            "method": "GET",
+        }
+    }
+
+    if page > 1:
+        links["first_page"] = {
+            "href": f"{request.url.path}?page=1&items_per_page={items_per_page}",
+            "method": "GET"
+        }
+        links["previous_page"] = {
+            "href": f"{request.url.path}?page={page - 1}&items_per_page={items_per_page}",
+            "method": "GET"
+        }
+
+    if page < total_pages:
+        links["next_page"] = {
+            "href": f"{request.url.path}?page={page + 1}&items_per_page={items_per_page}",
+            "method": "GET"
+        }
+        links["last_page"] = {
+            "href": f"{request.url.path}?page={total_pages}&items_per_page={items_per_page}",
+            "method": "GET"
+        }
 
     return {
         "lectures": {
@@ -904,16 +1030,7 @@ def read_student_lectures(
                 }
                 for lecture in student_lectures
             ],
-            "_links": {
-                "self": {
-                    "href": request.url.path,
-                    "method": "GET",
-                },
-                "parent": {
-                    "href": '/'.join(request.url.path.split('/')[:-1]),
-                    "method": "GET",
-                }
-            }
+            "_links": links
         }
     }
 
@@ -936,6 +1053,9 @@ def read_student_lecture(
     if (role != "student") or (student_id != int(user_id)):
         raise HTTPException(status_code=403, detail="You aren't authorized to access this resource")
 
+    if student_id < 1:
+        raise HTTPException(status_code=422, detail="Student ID must be a positive integer.")
+
     try:
         student = Student.select().where(Student.id == student_id).get()
     except:
@@ -946,7 +1066,7 @@ def read_student_lecture(
     if student_lecture_res.count() != 1:
         raise HTTPException(status_code=404, detail=f"Student not assigned to the lecture!")
 
-    student_lecture = Lecture.select().where(Lecture.cod == lecture_code).get()
+    student_lecture = Lecture.select().where(Lecture.cod == lecture_code.strip()).get()
 
     if not student_lecture:
         raise HTTPException(status_code=404, detail=f"Lecture not found!")
@@ -997,6 +1117,12 @@ def add_student(
     if role != "admin":
         raise HTTPException(status_code=403, detail="You aren't authorized to post this resource")
 
+    if study_year is not None and study_year < 1:
+        raise HTTPException(status_code=422, detail="Study Year must be a positive integer.")
+
+    if group is not None and group < 1:
+        raise HTTPException(status_code=422, detail="Group must be a positive integer.")
+
     try:
 
         if not match(email_regex, email):
@@ -1004,10 +1130,10 @@ def add_student(
             return {"error": "Invalid email"}
 
         resource = {
-            "nume": last_name,
-            "prenume": first_name,
-            "email": email,
-            "ciclu_studii": study_cycle.value,
+            "nume": last_name.strip(),
+            "prenume": first_name.strip(),
+            "email": email.strip(),
+            "ciclu_studii": study_cycle.value.strip(),
             "an_studiu": study_year,
             "grupa": group
         }
@@ -1040,17 +1166,26 @@ def update_student(
     if (role != "admin") and (student_id != int(user_id)):
         raise HTTPException(status_code=403, detail="You aren't authorized to update this resource")
 
+    if student_id < 1:
+        raise HTTPException(status_code=422, detail="Student ID must be a positive integer.")
+
     if not match(email_regex, email):
         response.status_code = 422
         return {"error": "Invalid email"}
 
+    if study_year is not None and study_year < 1:
+        raise HTTPException(status_code=422, detail="Study Year must be a positive integer.")
+
+    if group is not None and group < 1:
+        raise HTTPException(status_code=422, detail="Group must be a positive integer.")
+
     if not Student.get(Student.id == student_id):
         response.status_code = 201
         resource = {
-            "nume": last_name,
-            "prenume": first_name,
-            "email": email,
-            "ciclu_studii": study_cycle.value,
+            "nume": last_name.strip(),
+            "prenume": first_name.strip(),
+            "email": email.strip(),
+            "ciclu_studii": study_cycle.value.strip(),
             "an_studiu": study_year,
             "grupa": group
         }
@@ -1059,10 +1194,10 @@ def update_student(
     else:
         response.status_code = 204
         res = Student.update({
-            "nume": last_name,
-            "prenume": first_name,
-            "email": email,
-            "ciclu_studii": study_cycle.value,
+            "nume": last_name.strip(),
+            "prenume": first_name.strip(),
+            "email": email.strip(),
+            "ciclu_studii": study_cycle.value.strip(),
             "an_studiu": study_year,
             "grupa": group
         }).where(Student.id == student_id).execute()
@@ -1087,6 +1222,9 @@ def delete_student(
     role, user_id = ValidateIdentity(authorization)
     if role != "admin":
         raise HTTPException(status_code=403, detail="You aren't authorized to delete this resource")
+
+    if student_id < 1:
+        raise HTTPException(status_code=422, detail="Student ID must be a positive integer.")
 
     res = Student.select().where(Student.id == student_id)
 
@@ -1127,7 +1265,7 @@ def read_lectures(
         authorization: Annotated[str, Header()],
         coordinator: Union[str, None] = None,
         name: Union[str, None] = None,
-        year: Union[str, None] = None,
+        year: Union[int, None] = None,
         type: Union[str, None] = None,
         category: Union[str, None] = None,
         examination: Union[str, None] = None,
@@ -1139,30 +1277,44 @@ def read_lectures(
     if role not in ["profesor"]:
         raise HTTPException(status_code=403, detail="You aren't authorized to access this resource")
 
+    if year is not None and year and year < 1:
+        raise HTTPException(status_code=422, detail="Year must be a positive integer")
+
+    if page < 1:
+        raise HTTPException(status_code=422, detail="Page number must be positive!")
+    if items_per_page < 1 or items_per_page > MAX_ITEMS_PER_PAGE:
+        raise HTTPException(status_code=422, detail="Items per page must be positive and smaller than 100!")
+
+    filters = []
     if coordinator:
-        res = Lecture.select().where(Lecture.id_titular == (Teacher.select().where(Teacher.nume.contains(coordinator)).get())).order_by(Lecture.cod)
-    elif name:
-        res = Lecture.select().where(Lecture.nume_disciplina.contains(name)).order_by(Lecture.cod)
-    elif year:
-        res = Lecture.select().where(Lecture.an_studiu == year).order_by(Lecture.cod)
-    elif type:
-        res = Lecture.select().where(Lecture.tip_disciplina.contains(type)).order_by(Lecture.cod)
-    elif category:
-        res = Lecture.select().where(Lecture.categorie_disciplina.contains(category)).order_by(Lecture.cod)
-    elif examination:
-        res = Lecture.select().where(Lecture.tip_examinare.contains(examination)).order_by(Lecture.cod)
+        coordinator_id = Teacher.select().where(Teacher.nume.contains(coordinator.strip())).get().id
+        filters.append(Lecture.id_titular == coordinator_id)
+    if name:
+        filters.append(Lecture.nume_disciplina.contains(name.strip()))
+    if year:
+        filters.append(Lecture.an_studiu == year)
+    if type:
+        filters.append(Lecture.tip_disciplina.contains(type.strip()))
+    if category:
+        filters.append(Lecture.categorie_disciplina.contains(category.strip()))
+    if examination:
+        filters.append(Lecture.tip_examinare.contains(examination.strip()))
+
+    if filters:
+        res = Lecture.select().where(*filters).order_by(Lecture.cod)
     else:
-        res = Lecture.select()
+        res = Lecture.select().order_by(Lecture.cod)
 
     if not res:
         raise HTTPException(status_code=404, detail="lecture not found")
 
     total_items = res.count()
+    total_pages = math.ceil(total_items / items_per_page)
     start_index = (page - 1) * items_per_page
     end_index = start_index + items_per_page
 
     if start_index >= total_items:
-        raise HTTPException(status_code=416, detail={"max_page": math.ceil(total_items / items_per_page),
+        raise HTTPException(status_code=416, detail={"max_page": total_pages,
                                                       "items_per_page": items_per_page})
 
     res = res.limit(items_per_page).offset(start_index)
@@ -1189,27 +1341,49 @@ def read_lectures(
 
         lectures.append(lecture_dict)
 
+    links = {
+        "self": {
+            "href": request.url.path,
+            "method": "GET",
+        },
+        "parent": {
+            "href": '/'.join(request.url.path.split('/')[:-1]),
+            "method": "GET",
+        },
+        "create": {
+            "href": request.url.path,
+            "method": "POST",
+        },
+        "teacher_lectures": {
+            "href": f"http://localhost:8000/api/academia/teachers/{user_id}/lectures",
+            "method": "POST",
+        },
+    }
+
+    if page > 1:
+        links["first_page"] = {
+            "href": f"{request.url.path}?page=1&items_per_page={items_per_page}",
+            "method": "GET"
+        }
+        links["previous_page"] = {
+            "href": f"{request.url.path}?page={page - 1}&items_per_page={items_per_page}",
+            "method": "GET"
+        }
+
+    if page < total_pages:
+        links["next_page"] = {
+            "href": f"{request.url.path}?page={page + 1}&items_per_page={items_per_page}",
+            "method": "GET"
+        }
+        links["last_page"] = {
+            "href": f"{request.url.path}?page={total_pages}&items_per_page={items_per_page}",
+            "method": "GET"
+        }
+
     return {"lectures":
         {
             "lectures": lectures,
-            "_links": {
-                "self": {
-                    "href": request.url.path,
-                    "method": "GET",
-                },
-                "parent": {
-                    "href": '/'.join(request.url.path.split('/')[:-1]),
-                    "method": "GET",
-                },
-                "create": {
-                    "href": request.url.path,
-                    "method": "POST",
-                },
-                "teacher_lectures": {
-                    "href": f"http://localhost:8000/api/academia/teachers/{user_id}/lectures",
-                    "method": "POST",
-                },
-            }
+            "_links": links
         }
     }
 
@@ -1228,7 +1402,7 @@ def read_lecture(lecture_code: str, request: Request, authorization: Annotated[s
         raise HTTPException(status_code=403, detail="You aren't authorized to access this resource")
 
     try:
-        lecture = Lecture.select().where(Lecture.cod == lecture_code).get()
+        lecture = Lecture.select().where(Lecture.cod == lecture_code.strip()).get()
     except:
         raise HTTPException(status_code=404, detail="Lecture not found")
 
@@ -1291,15 +1465,21 @@ def add_lecture(
     if role not in ["admin"]:
         raise HTTPException(status_code=403, detail="You aren't authorized to post this resource")
 
+    if coordinator_id < 1:
+        raise HTTPException(status_code=422, detail="Coordinator ID must be a positive integer.")
+
+    if year is not None and year < 1:
+        raise HTTPException(status_code=422, detail="Year must be a positive integer.")
+
     try:
         resource = {
-            "cod": code,
+            "cod": code.strip(),
             "id_titular": coordinator_id,
-            "nume_disciplina": lecture_name,
+            "nume_disciplina": lecture_name.strip(),
             "an_studiu": year,
-            "tip_disciplina": lecture_type.value,
-            "categorie_disciplina": category.value,
-            "tip_examinare": examination.value
+            "tip_disciplina": lecture_type.value.strip(),
+            "categorie_disciplina": category.value.strip(),
+            "tip_examinare": examination.value.strip()
         }
 
         res = Lecture.insert(resource).execute()
@@ -1330,16 +1510,22 @@ def update_lecture(
     if role != "admin" and (role == "profesor" and user_id != coordinator_id):
         raise HTTPException(status_code=403, detail="You aren't authorized to update this resource")
 
+    if coordinator_id < 1:
+        raise HTTPException(status_code=422, detail="Coordinator ID must be a positive integer.")
+
+    if year is not None and year < 1:
+        raise HTTPException(status_code=422, detail="Year must be a positive integer.")
+
     if not Lecture.get_or_none(Lecture.cod == lecture_code):
         response.status_code = 201
         resource = {
-            "cod": lecture_code,
+            "cod": lecture_code.strip(),
             "id_titular": coordinator_id,
-            "nume_disciplina": lecture_name,
+            "nume_disciplina": lecture_name.strip(),
             "an_studiu": year,
-            "tip_disciplina": lecture_type.value,
-            "categorie_disciplina": category.value,
-            "tip_examinare": examination.value
+            "tip_disciplina": lecture_type.value.strip(),
+            "categorie_disciplina": category.value.strip(),
+            "tip_examinare": examination.value.strip()
         }
         res = Lecture.insert(resource).execute()
         return {"id": res, **resource}
@@ -1347,11 +1533,11 @@ def update_lecture(
         response.status_code = 204
         res = Lecture.update({
             "id_titular": coordinator_id,
-            "nume_disciplina": lecture_name,
+            "nume_disciplina": lecture_name.strip(),
             "an_studiu": year,
-            "tip_disciplina": lecture_type.value,
-            "categorie_disciplina": category.value,
-            "tip_examinare": examination.value
+            "tip_disciplina": lecture_type.value.strip(),
+            "categorie_disciplina": category.value.strip(),
+            "tip_examinare": examination.value.strip()
         }).where(Lecture.cod == lecture_code).execute()
 
         if res != 1:
@@ -1375,17 +1561,17 @@ def delete_lecture(
     if role not in ["admin"]:
         raise HTTPException(status_code=403, detail="You aren't authorized to delete this resource")
 
-    res = Lecture.select().where(Lecture.cod == lecture_code)
+    res = Lecture.select().where(Lecture.cod == lecture_code.strip())
 
     if res.count() < 1:
-        raise HTTPException(status_code=404, detail=f"Lecture with the code: {lecture_code} not found")
+        raise HTTPException(status_code=404, detail=f"Lecture with the code: {lecture_code.strip()} not found")
 
     copy = res.first()
 
-    delete_res = Lecture.delete().where(Lecture.cod == lecture_code).execute()
+    delete_res = Lecture.delete().where(Lecture.cod == lecture_code.strip()).execute()
 
     if delete_res != 1:
-        raise HTTPException(status_code=500, detail=f"Failed to delete the lecture: {lecture_code}")
+        raise HTTPException(status_code=500, detail=f"Failed to delete the lecture: {lecture_code.strip()}")
 
     return {
         "status": "success",
@@ -1406,22 +1592,22 @@ def validate_materials_access(lecture_name: str, method: str, request: Request, 
 
     if role == "profesor":
         try:
-            lecture = Lecture.select().where(Lecture.nume_disciplina == lecture_name).get()
-            if method == "GET":
+            lecture = Lecture.select().where(Lecture.nume_disciplina == lecture_name.strip()).get()
+            if method.strip() == "GET":
                 status = "authorized"
                 if lecture and int(lecture.id_titular) == int(user_id):
                     status = "owner"
-            elif method in ["POST", "PUT", "DELETE"]:
+            elif method.strip() in ["POST", "PUT", "DELETE"]:
                 if lecture and int(lecture.id_titular) == int(user_id):
                     status = "owner"
         except:
             raise HTTPException(status_code=404, detail="Lecture not found")
     elif role == "student":
-        if method != "GET":
+        if method.strip() != "GET":
             raise HTTPException(status_code=403, detail="You aren't authorized to access this resource")
         try:
             student = Student.select().where(Student.id == user_id).get()
-            lecture = Lecture.select().where(Lecture.nume_disciplina == lecture_name).get()
+            lecture = Lecture.select().where(Lecture.nume_disciplina == lecture_name.strip()).get()
         except:
             raise HTTPException(status_code=404, detail="Student/Lecture not found")
 

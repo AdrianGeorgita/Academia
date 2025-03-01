@@ -72,7 +72,7 @@ def login(
         password: str = Body(...),
 ):
     try:
-        if not match(email_regex, email):
+        if not match(email_regex, email.strip()):
             response.status_code = 422
             return {"error": "Invalid email"}
 
