@@ -50,6 +50,10 @@ const MainPage: React.FC = () => {
                 if(!token)
                     navigate('/login')
 
+                if(home_page_api.match("stats")) {
+                    navigate('/dashboard');
+                }
+
                 console.log(window.location.pathname);
 
                 const response = await fetch(home_page_api, {
@@ -59,6 +63,12 @@ const MainPage: React.FC = () => {
                         'Authorization': `Bearer ${token}`,
                     },
                 });
+
+                if(response.status === 401){
+                    localStorage.clear()
+                    navigate("/login")
+                }
+
 
                 if (!response.ok) {
                     throw new Error('Failed to fetch lectures');

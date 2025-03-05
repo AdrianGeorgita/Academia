@@ -37,7 +37,7 @@ app.add_middleware(
 
 db.connect()
 
-email_regex = "^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$"
+email_regex = r"^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$"
 
 class BaseModel(Model):
     class Meta:
@@ -179,9 +179,85 @@ default_responses = {
 def read_root():
     return custom_openapi() #{"Hello": "World"}
 
+
+@app.get("/api/academia/stats", responses = default_responses)
+def read_stats(
+        request: Request,
+        authorization: Annotated[str, Header()],
+):
+    role, user_id = ValidateIdentity(authorization)
+    if role not in ["admin"]:
+        raise HTTPException(status_code=403, detail="You aren't authorized to access this resource")
+
+    res = Teacher.select()
+    teachers_count = res.count()
+
+    res = Student.select()
+    students_count = res.count()
+
+    res = Lecture.select()
+    lectures_count = res.count()
+
+    parent_path = "/".join(request.url.path.strip("/").split("/")[:-1])
+    links = {
+        "self": {
+            "href": request.url.path,
+            "method": "GET",
+        },
+        "parent": {
+            "href": f"/{parent_path}",
+            "method": "GET",
+        },
+        "view_students": {
+            "href": f"/{parent_path}/students",
+            "method": "GET",
+        },
+        "view_teachers": {
+            "href": f"/{parent_path}/teachers",
+            "method": "GET",
+        },
+        "view_lectures": {
+            "href": f"/{parent_path}/lectures",
+            "method": "GET",
+        },
+        "add_student": {
+            "href": f"/{parent_path}/students",
+            "method": "POST",
+        },
+        "add_teacher": {
+            "href": f"/{parent_path}/teachers",
+            "method": "POST",
+        },
+        "add_lecture": {
+            "href": f"/{parent_path}/lectures",
+            "method": "POST",
+        },
+        "delete_student": {
+            "href": f"/{parent_path}/students",
+            "method": "DELETE",
+        },
+        "delete_teacher": {
+            "href": f"/{parent_path}/teachers",
+            "method": "DELETE",
+        },
+        "delete_lecture": {
+            "href": f"/{parent_path}/lectures",
+            "method": "DELETE",
+        },
+    }
+
+    stats = {
+        "stats": {
+            "students_count": students_count,
+            "teachers_count": teachers_count,
+            "lectures_count": lectures_count,
+        },
+        "_links": links
+    }
+    return stats
+
+
 # TEACHERS
-
-
 @app.get("/api/academia/teachers", responses=(
         {
             **default_responses,
@@ -280,10 +356,9 @@ def read_teachers(
     teachers = []
     for teacher in res:
         teacher_dict = model_to_dict(teacher)
-        teacher_dict["_links"] = links
         teachers.append(teacher_dict)
 
-    return {"teachers": teachers}
+    return {"teachers": teachers, "_links": links}
 
 
 @app.get("/api/academia/teachers/{teacher_id}", responses=(
@@ -870,10 +945,9 @@ def read_students(
     students = []
     for student in res:
         student_dict = model_to_dict(student)
-        student_dict["_links"] = links
         students.append(student_dict)
 
-    return {"students": students}
+    return {"students": students, "_links": links}
 
 
 @app.get("/api/academia/students/{student_id}", responses=(

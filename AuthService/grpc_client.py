@@ -28,7 +28,7 @@ app.add_middleware(
     allow_headers=["authorization", "content-type"],
 )
 
-email_regex = "^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$"
+email_regex = r"^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$"
 
 def ValidateIdentity(token: str):
     if not token.startswith("Bearer "):
@@ -92,7 +92,7 @@ def login(
             home_page = f"http://localhost:8000/api/academia/lectures"
             profile_page = f"http://localhost:8000/api/academia/teachers/{uid}"
         elif role == "admin":
-            home_page = f"http://localhost:8000/api/academia/teachers"
+            home_page = f"http://localhost:8000/api/academia/stats"
 
         return {
             "token": response.jws,

@@ -8,6 +8,9 @@ import MainPage from "./components/main/main";
 import LecturePage from "./components/lecture/lecture";
 import ProfilePage from "./components/profile/profile";
 import EnrolledStudents from "./components/enrolledStudents/enrolledStudents";
+import AdminDashboard from "./components/dashboard/dashboard";
+import Users from "./components/users/users";
+import UsersList from "./components/users/users";
 
 
 function App() {
@@ -21,6 +24,9 @@ function App() {
               <Route path="/profile" element={<ProfilePage />} />
               <Route path="/lectures/:cod" element={<LecturePage />} />
               <Route path="/lectures/:cod/students" element={<EnrolledStudents />} />
+              <Route path="/dashboard" element={<AdminDashboard />} />
+              <Route path="/dashboard/students" element={<UsersList category={"students"} />} />
+              <Route path="/dashboard/teachers" element={<UsersList category={"teachers"} />} />
           </Routes>
       </Router>
   );

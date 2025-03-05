@@ -25,12 +25,12 @@ const NavBar: React.FC = () => {
             const data: string = await response.json();
             console.log(data);
         }
-        finally {
-
+        catch (error) {
+            console.error("Error logging out:", error);
         }
     };
 
-    const handleLogout = async() => {
+    const handleLogout = async () => {
         await logoutRequest()
 
         localStorage.clear()
@@ -46,16 +46,33 @@ const NavBar: React.FC = () => {
         navigate('/profile');
     };
 
+    const isStatsPage = localStorage.getItem("homePage")?.match("stats");
+
     return (
         <nav className="navbar">
             <div className="navbar-left">
                 <div className="button-group">
                     <button className="navbar-button" onClick={goToMainPage}>
-                        Main Page
+                        {isStatsPage ? "Dashboard" : "Main Page"}
                     </button>
+
                     {localStorage.getItem("myLecturesAPI") && localStorage.getItem("myLecturesAPI") !== "" && (
                         <button className="navbar-button"
-                                onClick={() => {navigate(`/my-lectures`); window.location.reload() }}>My Lectures</button>
+                                onClick={() => {
+                                    navigate(`/my-lectures`);
+                                    window.location.reload()
+                                }}>My Lectures</button>
+                    )}
+
+                    {isStatsPage && (
+                        <>
+                            <button className="navbar-button" onClick={() => navigate("/dashboard/students")}>
+                                Students
+                            </button>
+                            <button className="navbar-button" onClick={() => navigate("/dashboard/teachers")}>
+                                Teachers
+                            </button>
+                        </>
                     )}
                 </div>
             </div>

@@ -1,0 +1,52 @@
+.users-container {
+    padding: 20px;
+    font-family: Arial, sans-serif;
+}
+
+.page-title {
+    font-size: 2rem;
+    color: #2c3e50;
+}
+
+.loading,
+.error {
+    font-size: 1.2rem;
+    color: #e74c3c;
+    text-align: center;
+}
+
+.user-list {
+    list-style-type: none;
+    padding: 0;
+}
+
+.user-item {
+    border: 1px solid #ccc;
+    margin-bottom: 10px;
+    padding: 10px;
+    border-radius: 5px;
+    background-color: #f9f9f9;
+    font-size: 1.1rem;
+}
+
+.pagination-buttons {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    margin-top: 20px;
+}
+
+.pagination-buttons button {
+    background-color: #3498db;
+    color: white;
+    border: none;
+    padding: 10px 15px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 16px;
+}
+
+.pagination-buttons button:disabled {
+    background-color: #bdc3c7;
+    cursor: not-allowed;
+}
