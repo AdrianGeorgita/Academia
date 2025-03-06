@@ -95,8 +95,8 @@ const UserManagementPage: React.FC<UsersListProps> = ({ category }) => {
                 study_year: profile.an_studiu,
                 group: profile.grupa,
             } : {
-                firstName: profile.nume,
-                lastName: profile.prenume,
+                firstName: profile.prenume,
+                lastName: profile.nume,
                 email: profile.email,
                 teachingDegree: profile.grad_didactic,
                 associationType: profile.tip_asociere,

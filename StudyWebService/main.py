@@ -781,8 +781,8 @@ def update_teacher(
     else:
         response.status_code = 204
         res = Teacher.update({
-            "nume": firstName.strip(),
-            "prenume": lastName.strip(),
+            "nume": lastName.strip(),
+            "prenume": firstName.strip(),
             "email": email.strip(),
             "grad_didactic": teachingDegree.value.strip(),
             "tip_asociere": associationType.value.strip(),
