@@ -81,9 +81,11 @@ const NavBar: React.FC = () => {
             </div>
             <div className="navbar-right">
                 <div className="button-group">
-                    <button className="navbar-button profile-button" onClick={handleProfile}>
-                        Profile
-                    </button>
+                    {!isStatsPage && (
+                        <button className="navbar-button profile-button" onClick={handleProfile}>
+                            Profile
+                        </button>
+                    )}
                     <button className="navbar-button logout-button" onClick={handleLogout}>
                         Logout
                     </button>
