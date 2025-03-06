@@ -1,0 +1,42 @@
+.button-group {
+    display: flex;
+    align-items: center;
+}
+
+.delete-button, .update-button {
+    padding: 10px 20px;
+    font-size: 16px;
+    line-height: 20px;
+    color: #fff;
+    background-color: #28a745;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.update-button:hover {
+    background-color: #218838;
+    transform: translateY(-2px);
+}
+
+.delete-button {
+    background-color: #ff4040;
+    margin-left: 20px;
+}
+
+.delete-button:hover {
+    background-color: #cc4040;
+    transform: translateY(-2px);
+}
+
+.update-button {
+    margin-top: 0px;
+}
+
+.update-button, .delete-button {
+    padding: 10px 18px;
+}

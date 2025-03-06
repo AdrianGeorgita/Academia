@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
-import './userManagement.css';
+import "./userManagement.css"
 import NavBar from "../navBar/navBar";
 
 interface Links {
@@ -79,6 +79,36 @@ const UserManagementPage: React.FC<UsersListProps> = ({ category }) => {
 
         fetchProfile();
     }, [id, category, navigate]);
+
+    const handleDelete = async() => {
+        if (!profile) return;
+
+        try {
+            const token = localStorage.getItem('authToken');
+            const { href, method } = profile._links.delete;
+
+            const response = await fetch(`${HOST_URL}${href}`, {
+                method: method,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`,
+                },
+            });
+
+            if (!response.ok) {
+                const errorBody = await response.json();
+                throw new Error(errorBody.detail || response.statusText);
+            }
+
+            alert('Profile deleted successfully');
+            navigate(`/dashboard/${category}`);
+        } catch (error) {
+            if (error instanceof Error) {
+                setError(error.message);
+                alert('Error deleting profile: ' + error.message);
+            }
+        }
+    }
 
     const handleUpdate = async () => {
         if (!profile) return;
@@ -222,9 +252,11 @@ const UserManagementPage: React.FC<UsersListProps> = ({ category }) => {
                 </div>
                 <div className="button-group">
                     <button className="update-button" onClick={handleUpdate}>Update Profile</button>
+                    <button className="delete-button" onClick={handleDelete}>Delete User</button>
                 </div>
             </div>
         </div>
+
     );
 };
 

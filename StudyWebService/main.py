@@ -799,6 +799,7 @@ def update_teacher(
         {
             **default_responses,
             404: {"description": "Not Found"},
+            409: {"description": "Conflict - Teacher has assigned lectures!"},
         }
     )
 )
@@ -813,12 +814,15 @@ def delete_teacher(
     if teacher_id < 1:
         raise HTTPException(status_code=422, detail="Teacher ID must be a positive integer.")
 
-    res = Teacher.select().where(Teacher.id == teacher_id)
+    teacher = Teacher.select().where(Teacher.id == teacher_id).get()
 
-    if res.count() < 1:
+    if not teacher:
         raise HTTPException(status_code=404, detail=f"Professor with the id: {teacher_id} not found")
 
-    copy = res.first()
+    teacher_lectures = Lecture.select().where(Lecture.id_titular == teacher_id)
+    if teacher_lectures.count() > 0:
+        raise HTTPException(status_code=409, detail=f"Professor is assigned to at least one lecture. You must "
+                                                    f"reassign them first!")
 
     delete_res = Teacher.delete().where(Teacher.id == teacher_id).execute()
 
@@ -827,7 +831,7 @@ def delete_teacher(
 
     return {
         "status": "success",
-        "teacher": {**model_to_dict(copy)}
+        "teacher": {**model_to_dict(teacher)}
     }
 # STUDENTS
 
@@ -1334,12 +1338,12 @@ def delete_student(
     if student_id < 1:
         raise HTTPException(status_code=422, detail="Student ID must be a positive integer.")
 
-    res = Student.select().where(Student.id == student_id)
+    student = Student.select().where(Student.id == student_id).get()
 
-    if res.count() < 1:
+    if not student:
         raise HTTPException(status_code=404, detail=f"Student with the id: {student_id} not found")
 
-    copy = res.first()
+    Student_Disciplina.delete().where(Student_Disciplina.StudentID == student_id).execute()
 
     delete_res = Student.delete().where(Student.id == student_id).execute()
 
@@ -1348,7 +1352,7 @@ def delete_student(
 
     return {
         "status": "success",
-        "student": {**model_to_dict(copy)}
+        "student": {**model_to_dict(student)}
     }
 # LECTURES
 
@@ -1679,12 +1683,12 @@ def delete_lecture(
     if role not in ["admin"]:
         raise HTTPException(status_code=403, detail="You aren't authorized to delete this resource")
 
-    res = Lecture.select().where(Lecture.cod == lecture_code.strip())
+    lecture = Lecture.select().where(Lecture.cod == lecture_code.strip()).get()
 
-    if res.count() < 1:
+    if not lecture:
         raise HTTPException(status_code=404, detail=f"Lecture with the code: {lecture_code.strip()} not found")
 
-    copy = res.first()
+    Student_Disciplina.delete().where(Lecture.cod == lecture_code.strip()).execute()
 
     delete_res = Lecture.delete().where(Lecture.cod == lecture_code.strip()).execute()
 
@@ -1693,7 +1697,7 @@ def delete_lecture(
 
     return {
         "status": "success",
-        "lecture": {**model_to_dict(copy)}
+        "lecture": {**model_to_dict(lecture)}
     }
 
 
