@@ -232,18 +232,6 @@ def read_stats(
             "href": f"/{parent_path}/lectures",
             "method": "POST",
         },
-        "delete_student": {
-            "href": f"/{parent_path}/students",
-            "method": "DELETE",
-        },
-        "delete_teacher": {
-            "href": f"/{parent_path}/teachers",
-            "method": "DELETE",
-        },
-        "delete_lecture": {
-            "href": f"/{parent_path}/lectures",
-            "method": "DELETE",
-        },
     }
 
     stats = {
@@ -311,7 +299,11 @@ def read_teachers(
 
     res = Teacher.select().where(*filters).order_by(Teacher.prenume) if filters else Teacher.select()
 
+    if not res:
+        raise HTTPException(status_code=404, detail="Teachers not found")
+
     total_teachers = res.count()
+
     start_index = (page - 1) * items_per_page
     end_index = start_index + items_per_page
     total_pages = math.ceil(total_teachers / items_per_page)
@@ -875,7 +867,7 @@ def read_students(
     if year:
         filters.append(Student.an_studiu == year)
     if group:
-        filters.append(Student.grupa.contains(group))
+        filters.append(Student.grupa == group)
 
     if lecture_code:
         if lecture_code is not None and role not in ["profesor", "admin"]:
