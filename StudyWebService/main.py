@@ -348,6 +348,27 @@ def read_teachers(
     teachers = []
     for teacher in res:
         teacher_dict = model_to_dict(teacher)
+        teacher_dict["_links"] = {
+            "self": {
+                "href": f"{request.url.path}/{teacher_dict["id"]}",
+                "method": "GET",
+            },
+            "parent": {
+                "href": f"{request.url.path}?page={page + 1}&items_per_page={items_per_page}",
+                "method": "GET",
+            }
+        }
+
+        if role == "admin":
+            teacher_dict["_links"]["update"] = {
+                "href": f"{request.url.path}/{teacher_dict["id"]}",
+                "method": "PUT",
+            }
+            teacher_dict["_links"]["delete"] = {
+                "href": f"{request.url.path}/{teacher_dict["id"]}",
+                "method": "DELETE",
+            }
+
         teachers.append(teacher_dict)
 
     return {"teachers": teachers, "_links": links}
@@ -362,7 +383,7 @@ def read_teachers(
 )
 def read_teacher(teacher_id: int, request: Request, authorization: Annotated[str, Header()]):
     role, user_id = ValidateIdentity(authorization)
-    if (role not in ["profesor"]) or (teacher_id != int(user_id)):
+    if (role not in ["profesor", "admin"]) or (role == "procesor" and (teacher_id != int(user_id))):
         raise HTTPException(status_code=403, detail="You aren't authorized to access this resource")
 
     if teacher_id < 1:
@@ -937,6 +958,27 @@ def read_students(
     students = []
     for student in res:
         student_dict = model_to_dict(student)
+        student_dict["_links"] = {
+            "self": {
+                "href": f"{request.url.path}/{student_dict["id"]}",
+                "method": "GET",
+            },
+            "parent": {
+                "href": f"{request.url.path}?page={page + 1}&items_per_page={items_per_page}",
+                "method": "GET",
+            }
+        }
+
+        if role == "admin":
+            student_dict["_links"]["update"] = {
+                "href": f"{request.url.path}/{student_dict["id"]}",
+                "method": "PUT",
+            }
+            student_dict["_links"]["delete"] = {
+                "href": f"{request.url.path}/{student_dict["id"]}",
+                "method": "DELETE",
+            }
+
         students.append(student_dict)
 
     return {"students": students, "_links": links}
@@ -1390,7 +1432,7 @@ def read_lectures(
         lecture_dict = model_to_dict(lecture)
         lecture_dict["_links"] = {
             "self": {
-                "href": request.url.path + "/" + lecture_dict["cod"],
+                "href": f"{request.url.path}/{lecture_dict["cod"]}",
                 "method": "GET",
             },
             "parent": {
@@ -1401,8 +1443,14 @@ def read_lectures(
 
         if int(lecture_dict["id_titular"]) == int(user_id):
             lecture_dict["_links"]["update"] = {
-                "href": request.url.path,
+                "href": f"{request.url.path}/{lecture_dict["cod"]}",
                 "method": "PUT",
+            }
+
+        if role == "admin":
+            lecture_dict["_links"]["delete"] = {
+                "href": f"{request.url.path}/{lecture_dict["cod"]}",
+                "method": "DELETE",
             }
 
         lectures.append(lecture_dict)
@@ -1416,15 +1464,19 @@ def read_lectures(
             "href": '/'.join(request.url.path.split('/')[:-1]),
             "method": "GET",
         },
-        "create": {
-            "href": request.url.path,
-            "method": "POST",
-        },
         "teacher_lectures": {
             "href": f"http://localhost:8000/api/academia/teachers/{user_id}/lectures",
             "method": "POST",
         },
     }
+
+    if role == "admin":
+        links["create"] = {
+            "create": {
+                "href": request.url.path,
+                "method": "POST",
+            },
+        }
 
     if page > 1:
         links["first_page"] = {

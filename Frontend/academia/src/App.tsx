@@ -11,6 +11,7 @@ import EnrolledStudents from "./components/enrolledStudents/enrolledStudents";
 import AdminDashboard from "./components/dashboard/dashboard";
 import Users from "./components/users/users";
 import UsersList from "./components/users/users";
+import UserManagementPage from "./components/userManagement/userManagement";
 
 
 function App() {
@@ -27,6 +28,8 @@ function App() {
               <Route path="/dashboard" element={<AdminDashboard />} />
               <Route path="/dashboard/students" element={<UsersList category={"students"} />} />
               <Route path="/dashboard/teachers" element={<UsersList category={"teachers"} />} />
+              <Route path="/dashboard/students/:id" element={<UserManagementPage category={"students"} />} />
+              <Route path="/dashboard/teachers/:id" element={<UserManagementPage category={"teachers"} />} />
           </Routes>
       </Router>
   );

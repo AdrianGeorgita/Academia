@@ -1,6 +1,14 @@
 import React, { useEffect, useState } from "react";
+import {Link} from "react-router-dom";
 import NavBar from "../navBar/navBar";
 import "./users.css";
+
+interface Links {
+    self: { href: string; method: string };
+    parent: { href: string; method: string };
+    update: { href: string; method: string };
+    delete: { href: string; method: string };
+}
 
 interface User {
     id: number;
@@ -10,6 +18,7 @@ interface User {
     ciclu_studii: string;
     an_studiu: number;
     grupa: number;
+    _links: Links;
 }
 
 interface UsersListProps {
@@ -35,7 +44,6 @@ const UsersList: React.FC<UsersListProps> = ({ category }) => {
 
     const token = localStorage.getItem("authToken");
     const host = "http://localhost:8000";
-    const apiEndpoint = `${host}/api/academia/${category}`;
 
     const buildApiUrl = (baseUrl: string) => {
         const params = new URLSearchParams();
@@ -71,7 +79,6 @@ const UsersList: React.FC<UsersListProps> = ({ category }) => {
         return baseUrl.includes("?") ? `${baseUrl}&${queryString}` : `${baseUrl}?${queryString}`;
     };
 
-    // Function to fetch users based on the provided URL (including pagination links)
     const fetchUsers = async (url: string) => {
         try {
             if (!token) throw new Error("Unauthorized");
@@ -101,7 +108,7 @@ const UsersList: React.FC<UsersListProps> = ({ category }) => {
 
             if (response.ok) {
                 const data = await response.json();
-                setUsers(data[category]); // Fetch students or teachers
+                setUsers(data[category]);
                 setPaginationLinks({
                     first: data["_links"]["first_page"]?.href || "",
                     previous: data["_links"]["previous_page"]?.href || "",
@@ -117,7 +124,6 @@ const UsersList: React.FC<UsersListProps> = ({ category }) => {
     };
 
     useEffect(() => {
-        //fetchUsers(apiEndpoint); // Fetch data on component mount
         fetchUsers(buildApiUrl(`${host}/api/academia/${category}`));
 
     }, [category, itemsPerPage]);
@@ -197,7 +203,16 @@ const UsersList: React.FC<UsersListProps> = ({ category }) => {
                     <ul className="user-list">
                         {users.map((user) => (
                             <li key={user.id} className="user-item">
-                                {user.prenume} {user.nume} ({user.email})
+                                <div className="user-info">
+                                    {user.prenume} {user.nume} ({user.email})
+                                </div>
+
+                                <Link
+                                    to={`/dashboard/${category}/${user.id}`}
+                                    state={{apiUrl: user["_links"]["self"].href}}
+                                >
+                                    <button className="view-profile-btn">View Profile</button>
+                                </Link>
                             </li>
                         ))}
                     </ul>

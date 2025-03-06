@@ -1,7 +1,14 @@
 import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import {Link, useNavigate} from "react-router-dom";
 import NavBar from "../navBar/navBar";
 import "./dashboard.css";
+
+interface Links {
+    self: { href: string; method: string };
+    parent: { href: string; method: string };
+    update: { href: string; method: string };
+    delete: { href: string; method: string };
+}
 
 interface Stats {
     students_count: number;
@@ -14,6 +21,7 @@ interface User {
     prenume: string;
     nume: string;
     rol: string;
+    _links: Links;
 }
 
 const AdminDashboard: React.FC = () => {
@@ -143,6 +151,13 @@ const AdminDashboard: React.FC = () => {
                 {users.map((user) => (
                     <li key={user.id} className="user-item">
                         {user.rol} - {user.prenume} {user.nume}
+
+                        <Link
+                            to={`/dashboard/${user.rol.toLowerCase()}s/${user.id}`}
+                            state={{apiUrl: user["_links"]["self"].href}}
+                        >
+                            <button className="view-profile-btn">View Profile</button>
+                        </Link>
                     </li>
                 ))}
             </ul>
