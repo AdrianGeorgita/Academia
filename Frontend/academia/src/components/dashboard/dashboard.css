@@ -16,16 +16,31 @@
 }
 
 .stats-container {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
     background: #f9f9f9;
-    padding: 15px;
+    padding: 20px;
     border-radius: 8px;
     margin-bottom: 20px;
     box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    text-align: center;
 }
 
-.stats-container p {
-    font-size: 1.2rem;
-    margin: 5px 0;
+.stat-item {
+    flex: 1;
+}
+
+.stat-title {
+    font-size: 1.6rem;
+    font-weight: bold;
+    color: #2c3e50;
+}
+
+.stat-number {
+    font-size: 2.5rem;
+    font-weight: bold;
+    color: #34495e;
 }
 
 .create-user-button {

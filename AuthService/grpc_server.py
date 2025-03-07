@@ -98,6 +98,29 @@ class AuthenticationService(auth_pb2_grpc.Authentication):
 
         return auth_pb2.ValidationResponse(status=status + body)
 
+    def Register(self, request, context):
+        status = "Success"
+        uid = -1
+
+        passwd_hash = hashlib.md5(request.password.encode()).hexdigest()
+        res = User.select().where((User.email == request.username))
+
+        if res.count() == 1:
+            status = "Conflict"
+        else:
+            try:
+                resource = {
+                    "email": request.username.strip(),
+                    "parola": passwd_hash,
+                    "rol": request.role.strip()
+                }
+
+                uid = User.insert(resource).execute()
+            except:
+                status = "Failed"
+
+        return auth_pb2.RegistrationResponse(status=status, uid=str(uid))
+
 def serve():
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
     auth_pb2_grpc.add_AuthenticationServicer_to_server(

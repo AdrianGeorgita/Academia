@@ -15,6 +15,7 @@ interface User {
     id: number;
     prenume: string;
     nume: string;
+    email: string;
     rol: string;
     _links: Links;
 }
@@ -59,7 +60,7 @@ const AdminDashboard: React.FC = () => {
             let allUsers: User[] = [];
 
             if (data["_links"]["view_students"]) {
-                const studentsResponse = await fetch(`${host}${data["_links"]["view_students"]["href"]}`, {
+                const studentsResponse = await fetch(`${host}${data["_links"]["view_students"]["href"]}?items_per_page=100`, {
                     method: data["_links"]["view_students"]["method"],
                     headers: {
                         "Content-Type": "application/json",
@@ -78,7 +79,7 @@ const AdminDashboard: React.FC = () => {
             }
 
             if (data["_links"]["view_teachers"]) {
-                const teachersResponse = await fetch(`${host}${data["_links"]["view_teachers"]["href"]}`, {
+                const teachersResponse = await fetch(`${host}${data["_links"]["view_teachers"]["href"]}?items_per_page=100`, {
                     method: data["_links"]["view_teachers"]["method"],
                     headers: {
                         "Content-Type": "application/json",
@@ -110,8 +111,8 @@ const AdminDashboard: React.FC = () => {
         fetchUsers(`${statsAPI}`);
     }, []);
 
-    const handleCreateUser = () => {
-        navigate("/admin/create-user");
+    const handleCreate = (category: string) => {
+        navigate("/dashboard/create", {state: {category}});
     };
 
     if (loading) return <div className="loading">Loading...</div>;
@@ -119,29 +120,47 @@ const AdminDashboard: React.FC = () => {
 
     return (
         <div className="admin-container">
-            <NavBar />
+            <NavBar/>
             <h1 className="page-title">Admin Dashboard</h1>
 
             <div className="stats-container">
-                <p>Total Students: {stats?.stats.students_count}</p>
-                <p>Total Teachers: {stats?.stats.teachers_count}</p>
-                <p>Total Lectures: {stats?.stats.lectures_count}</p>
+                <div className="stat-item">
+                    <p className="stat-title">Total Students</p>
+                    <p className="stat-number">{stats?.stats.students_count}</p>
+                    <button className="create-user-button" onClick={() => handleCreate("student")}>
+                        Create New Student
+                    </button>
+                </div>
+                <div className="stat-item">
+                    <p className="stat-title">Total Teachers</p>
+                    <p className="stat-number">{stats?.stats.teachers_count}</p>
+                    <button className="create-user-button" onClick={() => handleCreate("teacher")}>
+                        Create New Teacher
+                    </button>
+                </div>
+                <div className="stat-item">
+                    <p className="stat-title">Total Lectures</p>
+                    <p className="stat-number">{stats?.stats.lectures_count}</p>
+                    <button className="create-user-button" onClick={() => handleCreate("lecture")}>
+                        Create New Lecture
+                    </button>
+                </div>
             </div>
 
-            <button className="create-user-button" onClick={handleCreateUser}>
-                Create New User
-            </button>
 
             <h2>Recent Users</h2>
 
             <ul className="user-list">
-                {users.map((user) => (
+            {users.map((user) => (
                     <li key={user.id} className="user-item">
-                        {user.rol} - {user.prenume} {user.nume}
+                        {user.rol}: {user.prenume} {user.nume} ({user.email})
 
                         <Link
                             to={`/dashboard/${user.rol.toLowerCase()}s/${user.id}`}
-                            state={{apiUrl: user["_links"]["self"].href, lecturesApi: stats ? stats : ["view_lectures"]}}
+                            state={{
+                                apiUrl: user["_links"]["self"].href,
+                                lecturesApi: stats?._links.view_lectures
+                            }}
                         >
                             <button className="view-profile-btn">View Profile</button>
                         </Link>

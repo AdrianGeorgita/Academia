@@ -10,6 +10,9 @@ interface Stats {
         view_students: { href: string; method: string };
         view_lectures: { href: string; method: string };
         view_teachers: { href: string; method: string };
+        add_student: { href: string; method: string };
+        add_lecture: { href: string; method: string };
+        add_teacher: { href: string; method: string };
     }
 }
 

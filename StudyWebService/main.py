@@ -704,7 +704,7 @@ def add_lecture_materials(
         raise HTTPException(status_code=response.status_code, detail=f"Failed to add the materials for the lecture!")
 
 
-@app.post("/api/academia/teachers/", status_code=201, responses=(
+@app.post("/api/academia/teachers", status_code=201, responses=(
         {
             **default_responses,
             422: {"description": "Unprocessable Content"},
@@ -726,12 +726,29 @@ def add_teacher(
         raise HTTPException(status_code=403, detail="You aren't authorized to post this resource")
 
     try:
-
         if not match(email_regex, email):
             response.status_code = 422
             return {"error": "Invalid email"}
 
+        body = {
+            "username": email.strip(),
+            "password": "prof",
+            "role": "profesor"
+        }
+
+        url = f"http://auth_service:8008/api/academia/register"
+        headers = {"Content-Type": 'application/json', "Authorization": authorization}
+        response = requests.post(url, json=body, headers=headers)
+
+        if response.status_code != 201:
+            raise HTTPException(status_code=response.status_code,
+                                detail=f"Failed to create an account for the user: {response.json()["detail"]}")
+
+        uid = response.json()["uid"]
+
+
         resource = {
+            "id": uid,
             "nume": firstName.strip(),
             "prenume": lastName.strip(),
             "email": email.strip(),
@@ -1244,7 +1261,7 @@ def read_student_lecture(
         raise HTTPException(status_code=response.status_code, detail=f"Failed to get materials for the lecture!")
 
 
-@app.post("/api/academia/students/", status_code=201, responses=(
+@app.post("/api/academia/students", status_code=201, responses=(
         {
             **default_responses,
             422: {"description": "Unprocessable Content"},
@@ -1277,7 +1294,24 @@ def add_student(
             response.status_code = 422
             return {"error": "Invalid email"}
 
+        body = {
+            "username": email.strip(),
+            "password": "student",
+            "role": "student"
+        }
+
+        url = f"http://auth_service:8008/api/academia/register"
+        headers = {"Content-Type": 'application/json', "Authorization": authorization}
+        response = requests.post(url, json=body, headers=headers)
+
+        if response.status_code != 201:
+            raise HTTPException(status_code=response.status_code,
+                                detail=f"Failed to create an account for the user: {response.json()["detail"]}")
+
+        uid = response.json()["uid"]
+
         resource = {
+            "id": uid,
             "nume": last_name.strip(),
             "prenume": first_name.strip(),
             "email": email.strip(),
@@ -1606,7 +1640,7 @@ def read_lecture(lecture_code: str, request: Request, authorization: Annotated[s
     return lecture
 
 
-@app.post("/api/academia/lectures/", status_code=201, responses=(
+@app.post("/api/academia/lectures", status_code=201, responses=(
         {
             **default_responses,
             422: {"description": "Unprocessable Content"},
@@ -1632,6 +1666,11 @@ def add_lecture(
 
     if year is not None and year < 1:
         raise HTTPException(status_code=422, detail="Year must be a positive integer.")
+
+    try:
+        coordinator = Teacher.select().where(Teacher.id == coordinator_id).get()
+    except:
+        raise HTTPException(status_code=404, detail="Coordinating Teacher not found!")
 
     try:
         resource = {

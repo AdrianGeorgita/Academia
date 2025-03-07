@@ -75,6 +75,8 @@ const UserManagementPage: React.FC<UsersListProps> = ({ category }) => {
                 navigate("/dashboard");
             }
 
+            console.log(lecturesApi);
+
             try {
                 const token = localStorage.getItem('authToken');
                 if (!token) navigate('/login');
