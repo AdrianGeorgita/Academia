@@ -31,6 +31,20 @@ interface Teacher extends CommonProfile {
     afiliere: string;
 }
 
+interface LectureLinks {
+    self: { href: string; method: string };
+    parent: { href: string; method: string };
+    unassign?: { href: string; method: string };
+    assign?: { href: string; method: string };
+}
+
+interface Lecture {
+    cod: string;
+    nume_disciplina: string;
+    an_studiu: string;
+    _links: LectureLinks;
+}
+
 interface UsersListProps {
     category: "students" | "teachers";
 }
@@ -42,14 +56,24 @@ const UserManagementPage: React.FC<UsersListProps> = ({ category }) => {
     const navigate = useNavigate();
     const location = useLocation();
 
+    const [studentLectures, setStudentLectures] = useState<Lecture[]>([]);
+    const [studentLecturesLinks, setStudentLecturesLinks] = useState<LectureLinks | null>(null);
+    const [allLectures, setLectures] = useState<Lecture[]>([]);
+    const [selectedStudentLecture, setSelectedStudentLecture] = useState<string>('');
+    const [selectedLecture, setSelectedLecture] = useState<string>('');
+
     const { id} = useParams<{ id: string}>();
-    const { apiUrl } = location.state || {};
+    const { apiUrl, lecturesApi } = location.state || {};
 
     const HOST_URL = "http://localhost:8000";
 
     useEffect(() => {
         const fetchProfile = async () => {
             if(!apiUrl) return;
+
+            if(!lecturesApi){
+                navigate("/dashboard");
+            }
 
             try {
                 const token = localStorage.getItem('authToken');
@@ -70,6 +94,48 @@ const UserManagementPage: React.FC<UsersListProps> = ({ category }) => {
 
                 const data = await response.json();
                 setProfile(data.student || data.teacher);
+
+                if(data.student) {
+                    const getLecturesApi = data.student["_links"]["lectures"];
+                    const lectures_response = await fetch(`${HOST_URL}${getLecturesApi.href}`, {
+                        method: getLecturesApi.method,
+                        headers: {
+                            "Content-Type": "application/json",
+                            Authorization: `Bearer ${token}`,
+                        },
+                    });
+
+                    if (!lectures_response.ok) {
+                        const errorBody = await lectures_response.json();
+                        throw new Error(errorBody.detail || lectures_response.statusText);
+                    }
+
+                    const lectures_data = await lectures_response.json();
+                    setStudentLectures(lectures_data.lectures.lectures);
+                    setStudentLecturesLinks(lectures_data.lectures._links);
+
+
+                    const all_lectures_response = await fetch(`${HOST_URL}${lecturesApi.href}?items_per_page=100`, {
+                        method: lecturesApi.method,
+                        headers: {
+                            "Content-Type": "application/json",
+                            Authorization: `Bearer ${token}`,
+                        },
+                    });
+
+                    if (!all_lectures_response.ok) {
+                        const errorBody = await all_lectures_response.json();
+                        throw new Error(errorBody.detail || all_lectures_response.statusText);
+                    }
+
+                    const all_lectures_data = await all_lectures_response.json();
+                    const filteredLectures = all_lectures_data.lectures.lectures.filter(
+                        (lecture: Lecture) => !studentLectures.some((studentLecture) => studentLecture.cod === lecture.cod)
+                    );
+                    setLectures(filteredLectures);
+
+                }
+
             } catch (error) {
                 if (error instanceof Error) setError(error.message);
             } finally {
@@ -156,6 +222,74 @@ const UserManagementPage: React.FC<UsersListProps> = ({ category }) => {
         }
     };
 
+    const assignLecture = async (lecture_code: string) => {
+        if (!profile) return;
+
+        try {
+            const token = localStorage.getItem('authToken');
+            const href = studentLecturesLinks?.assign?.href
+            const method = studentLecturesLinks?.assign?.method
+
+            if(!href || !method) return;
+
+            const response = await fetch(`${HOST_URL}${href}`, {
+                method: method,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`,
+                },
+                body: JSON.stringify(lecture_code),
+            });
+
+            if (!response.ok) {
+                const errorBody = await response.json();
+                throw new Error(errorBody.detail || response.statusText);
+            }
+
+            window.location.reload();
+
+        } catch (error) {
+            if (error instanceof Error) {
+                alert('Error assigning lecture: ' + error.message);
+            }
+        }
+    };
+
+    const unassignLecture = async (lecture_code: string) => {
+        if (!profile) return;
+
+        try {
+            const token = localStorage.getItem('authToken');
+            const studentLecture = studentLectures.find(lecture => lecture.cod === lecture_code);
+
+            if(!studentLecture) return;
+
+            const href = studentLecture._links.unassign?.href
+            const method = studentLecture._links.unassign?.method
+
+            if(!href || !method) return;
+
+            const response = await fetch(`${HOST_URL}${href}`, {
+                method: method,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`,
+                },
+            });
+
+            if (!response.ok) {
+                const errorBody = await response.json();
+                throw new Error(errorBody.detail || response.statusText);
+            }
+
+            window.location.reload();
+        } catch (error) {
+            if (error instanceof Error) {
+                alert('Error unassigning lecture: ' + error.message);
+            }
+        }
+    };
+
     if (loading) return <div className="loading">Loading...</div>;
     if (error) return <div className="error">Error: {error}</div>;
     if (!profile) return <div className="error">No profile found!</div>;
@@ -165,98 +299,203 @@ const UserManagementPage: React.FC<UsersListProps> = ({ category }) => {
             <NavBar />
             <div className="profile-page-container">
                 <h1 className="profile-title">Admin Profile Management</h1>
-                <div className="profile-details">
-                    <label className="profile-label">
-                        <strong>First Name:</strong>
-                        <input
-                            type="text"
-                            value={profile.prenume}
-                            onChange={(e) => setProfile({ ...profile, prenume: e.target.value })}
-                            className="editable-input"
-                        />
-                    </label>
-                    <label className="profile-label">
-                        <strong>Last Name:</strong>
-                        <input
-                            type="text"
-                            value={profile.nume}
-                            onChange={(e) => setProfile({ ...profile, nume: e.target.value })}
-                            className="editable-input"
-                        />
-                    </label>
-                    <p><strong>Email</strong>: {profile.email}</p>
+
+                <div className="two-column-layout">
+                    {/* Left Column - Profile Information */}
+                    <div className="profile-column">
+                        <h2>Profile Information</h2>
+                        <div className="profile-details">
+                            <label className="profile-label">
+                                <strong>First Name:</strong>
+                                <input
+                                    type="text"
+                                    value={profile.prenume}
+                                    onChange={(e) => setProfile({...profile, prenume: e.target.value})}
+                                    className="editable-input"
+                                />
+                            </label>
+                            <label className="profile-label">
+                                <strong>Last Name:</strong>
+                                <input
+                                    type="text"
+                                    value={profile.nume}
+                                    onChange={(e) => setProfile({...profile, nume: e.target.value})}
+                                    className="editable-input"
+                                />
+                            </label>
+                            <p><strong>Email</strong>: {profile.email}</p>
+
+                            {'ciclu_studii' in profile && (
+                                <>
+                                    <label className="profile-label">
+                                        <strong>Study Cycle:</strong>
+                                        <select
+                                            className="editable-input"
+                                            value={profile.ciclu_studii}
+                                            onChange={(e) => setProfile({
+                                                ...profile,
+                                                ciclu_studii: e.target.value
+                                            })}
+                                        >
+                                            <option value="licenta">Licenta</option>
+                                            <option value="master">Master</option>
+                                        </select>
+                                    </label>
+                                    <label className="profile-label">
+                                        <strong>Year of Study:</strong>
+                                        <input
+                                            type="number"
+                                            min={1}
+                                            max={4}
+                                            value={profile.an_studiu}
+                                            onChange={(e) => setProfile({
+                                                ...profile,
+                                                an_studiu: Number(e.target.value)
+                                            })}
+                                            className="editable-input"
+                                        />
+                                    </label>
+                                    <label className="profile-label">
+                                        <strong>Group:</strong>
+                                        <input
+                                            type="number"
+                                            min={1}
+                                            max={1999}
+                                            value={profile.grupa}
+                                            onChange={(e) => setProfile({...profile, grupa: Number(e.target.value)})}
+                                            className="editable-input"
+                                        />
+                                    </label>
+                                </>
+                            )}
+
+                            {'grad_didactic' in profile && (
+                                <>
+                                    <label className="profile-label">
+                                        <strong>Grade:</strong>
+                                        <select
+                                            className="editable-input"
+                                            value={profile.grad_didactic}
+                                            onChange={(e) => setProfile({
+                                                ...profile,
+                                                grad_didactic: e.target.value
+                                            })}
+                                        >
+                                            <option value="prof">Profesor</option>
+                                            <option value="conf">Conferentiar</option>
+                                            <option value="sef_lucr">Sef Lucrari</option>
+                                            <option value="asist">Asistent</option>
+                                        </select>
+                                    </label>
+                                    <label className="profile-label">
+                                        <strong>Affiliation:</strong>
+                                        <input
+                                            type="text"
+                                            value={profile.afiliere}
+                                            onChange={(e) => setProfile({...profile, afiliere: e.target.value})}
+                                            className="editable-input"
+                                        />
+                                    </label>
+                                    <label className="profile-label">
+                                        <strong>Association Type:</strong>
+                                        <select
+                                            className="editable-input"
+                                            value={profile.tip_asociere}
+                                            onChange={(e) => setProfile({
+                                                ...profile,
+                                                tip_asociere: e.target.value
+                                            })}
+                                        >
+                                            <option value="titular">Titular</option>
+                                            <option value="asociat">Asociat</option>
+                                            <option value="extern">Extern</option>
+                                        </select>
+                                    </label>
+                                </>
+                            )}
+                        </div>
+                        <div className="button-group">
+                            <button className="update-button" onClick={handleUpdate}>Update Profile</button>
+                            <button className="delete-button" onClick={handleDelete}>Delete User</button>
+                        </div>
+                    </div>
 
                     {'ciclu_studii' in profile && (
-                        <>
+                        <div className="lectures-column">
+                            <h2>Lecture Management</h2>
+                            <div className="lectures-management">
                             <label className="profile-label">
-                                <strong>Study Cycle:</strong>
-                                <input
-                                    type="text"
-                                    value={profile.ciclu_studii}
-                                    onChange={(e) => setProfile({ ...profile, ciclu_studii: e.target.value })}
-                                    className="editable-input"
-                                />
-                            </label>
-                            <label className="profile-label">
-                                <strong>Year of Study:</strong>
-                                <input
-                                    type="number"
-                                    value={profile.an_studiu}
-                                    onChange={(e) => setProfile({ ...profile, an_studiu: Number(e.target.value) })}
-                                    className="editable-input"
-                                />
-                            </label>
-                            <label className="profile-label">
-                                <strong>Group:</strong>
-                                <input
-                                    type="number"
-                                    value={profile.grupa}
-                                    onChange={(e) => setProfile({ ...profile, grupa: Number(e.target.value) })}
-                                    className="editable-input"
-                                />
-                            </label>
-                        </>
-                    )}
+                                    <strong>Student's Lectures:</strong>
+                                    <input
+                                        name="lectures"
+                                        id="lectures"
+                                        list="lectures-list"
+                                        className="editable-input"
+                                        value={selectedStudentLecture}
+                                        onChange={(e) => setSelectedStudentLecture(e.target.value)}
+                                        placeholder="Select a lecture"
+                                    />
+                                    <datalist id="lectures-list">
+                                        {studentLectures.map((lecture) => (
+                                            <option key={lecture.cod}
+                                                    value={`${lecture.cod} - ${lecture.nume_disciplina}`}/>
+                                        ))}
+                                    </datalist>
+                                </label>
 
-                    {'grad_didactic' in profile && (
-                        <>
-                            <label className="profile-label">
-                                <strong>Grade:</strong>
-                                <input
-                                    type="text"
-                                    value={profile.grad_didactic}
-                                    onChange={(e) => setProfile({ ...profile, grad_didactic: e.target.value })}
-                                    className="editable-input"
-                                />
-                            </label>
-                            <label className="profile-label">
-                                <strong>Affiliation:</strong>
-                                <input
-                                    type="text"
-                                    value={profile.afiliere}
-                                    onChange={(e) => setProfile({ ...profile, afiliere: e.target.value })}
-                                    className="editable-input"
-                                />
-                            </label>
-                            <label className="profile-label">
-                                <strong>Association Type:</strong>
-                                <input
-                                    type="text"
-                                    value={profile.tip_asociere}
-                                    onChange={(e) => setProfile({ ...profile, tip_asociere: e.target.value })}
-                                    className="editable-input"
-                                />
-                            </label>
-                        </>
+                                <div className="button-group lecture-buttons">
+                                    <button
+                                        className="unassign-button"
+                                        disabled={!selectedStudentLecture}
+                                        onClick={() => unassignLecture(selectedStudentLecture.split(" - ")[0])}
+                                    >
+                                        Unassign Lecture
+                                    </button>
+                                </div>
+
+                                {studentLectures.length === 0 && (
+                                    <p className="no-lectures-message">No lectures assigned to this student.</p>
+                                )}
+
+                                <label className="profile-label">
+                                    <strong>Available Lectures:</strong>
+                                    <input
+                                        name="all-lectures"
+                                        id="all-lectures"
+                                        list="all-lectures-list"
+                                        className="editable-input"
+                                        value={selectedLecture}
+                                        onChange={(e) => setSelectedLecture(e.target.value)}
+                                        placeholder="Select a lecture"
+                                    />
+                                    <datalist id="all-lectures-list">
+                                        {allLectures.map((lecture) => (
+                                            <option key={lecture.cod}
+                                                    value={`${lecture.cod} - ${lecture.nume_disciplina}`}/>
+                                        ))}
+                                    </datalist>
+                                </label>
+
+                                <div className="button-group lecture-buttons">
+                                    <button
+                                        className="assign-button"
+                                        disabled={!selectedLecture}
+                                        onClick={() => assignLecture(selectedLecture.split(" - ")[0])}
+                                    >
+                                        Assign Lecture
+                                    </button>
+                                </div>
+
+                                {allLectures.length === 0 && (
+                                    <p className="no-lectures-message">No lectures available.</p>
+                                )}
+
+                            </div>
+                        </div>
                     )}
-                </div>
-                <div className="button-group">
-                    <button className="update-button" onClick={handleUpdate}>Update Profile</button>
-                    <button className="delete-button" onClick={handleDelete}>Delete User</button>
                 </div>
             </div>
         </div>
-
     );
 };
 

@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
-import {Link} from "react-router-dom";
+import {Link, useLocation} from "react-router-dom";
 import NavBar from "../navBar/navBar";
 import "./users.css";
+import { useStats } from "../context/statsContext";
 
 interface Links {
     self: { href: string; method: string };
@@ -30,6 +31,7 @@ const UsersList: React.FC<UsersListProps> = ({ category }) => {
     const [paginationLinks, setPaginationLinks] = useState<Record<string, string>>({});
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string>("");
+    const { stats } = useStats();
 
     const [search, setSearch] = useState<string>("");
     const [degree, setDegree] = useState<string>("");
@@ -209,7 +211,7 @@ const UsersList: React.FC<UsersListProps> = ({ category }) => {
 
                                 <Link
                                     to={`/dashboard/${category}/${user.id}`}
-                                    state={{apiUrl: user["_links"]["self"].href}}
+                                    state={{apiUrl: user["_links"]["self"].href, lecturesApi: stats?._links.view_lectures}}
                                 >
                                     <button className="view-profile-btn">View Profile</button>
                                 </Link>

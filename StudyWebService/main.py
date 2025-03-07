@@ -256,7 +256,8 @@ def read_stats(
                         "example": {"detail": {"max_page": 1, "items_per_page": 5}}
                     }
                 }
-            }
+            },
+            422: {"description": "Unprocessable Content"},
         }
     )
 )
@@ -300,7 +301,7 @@ def read_teachers(
     res = Teacher.select().where(*filters).order_by(Teacher.prenume) if filters else Teacher.select()
 
     if not res:
-        raise HTTPException(status_code=404, detail="Teachers not found")
+        raise HTTPException(status_code=404, detail="No teachers found!")
 
     total_teachers = res.count()
 
@@ -378,6 +379,7 @@ def read_teachers(
         {
             **default_responses,
             404: {"description": "Not Found"},
+            422: {"description": "Unprocessable Content"},
         }
     )
 )
@@ -434,7 +436,8 @@ def read_teacher(teacher_id: int, request: Request, authorization: Annotated[str
                         "example": {"detail": {"max_page": 1, "items_per_page": 5}}
                     }
                 }
-            }
+            },
+            422: {"description": "Unprocessable Content"},
         }
     )
 )
@@ -545,6 +548,7 @@ def read_teacher_lectures(
         {
             **default_responses,
             404: {"description": "Not Found"},
+            422: {"description": "Unprocessable Content"},
         }
     )
 )
@@ -617,6 +621,7 @@ def read_teacher_lecture(
         {
             **default_responses,
             404: {"description": "Not Found"},
+            422: {"description": "Unprocessable Content"},
         }
     )
 )
@@ -633,8 +638,9 @@ def update_lecture_materials(
     if teacher_id < 1:
         raise HTTPException(status_code=422, detail="Teacher ID must be a positive integer.")
 
-    teacher = Teacher.select().where(Teacher.id == teacher_id).get()
-    if not teacher:
+    try:
+        teacher = Teacher.select().where(Teacher.id == teacher_id).get()
+    except:
         raise HTTPException(status_code=404, detail="Teacher not found")
 
     teacher_lecture = Lecture.select().where((Lecture.id_titular == teacher.id) & (Lecture.cod == lecture_code.strip()))
@@ -658,7 +664,8 @@ def update_lecture_materials(
         {
             **default_responses,
             404: {"description": "Not Found"},
-            409: {"description": "Conflict"}
+            409: {"description": "Conflict"},
+            422: {"description": "Unprocessable Content"},
         }
     )
 )
@@ -675,8 +682,9 @@ def add_lecture_materials(
     if teacher_id < 1:
         raise HTTPException(status_code=422, detail="Teacher ID must be a positive integer.")
 
-    teacher = Teacher.select().where(Teacher.id == teacher_id).get()
-    if not teacher:
+    try:
+        teacher = Teacher.select().where(Teacher.id == teacher_id).get()
+    except:
         raise HTTPException(status_code=404, detail="Teacher not found")
 
     teacher_lecture = Lecture.select().where((Lecture.id_titular == teacher.id) & (Lecture.cod == lecture_code.strip()))
@@ -699,6 +707,7 @@ def add_lecture_materials(
 @app.post("/api/academia/teachers/", status_code=201, responses=(
         {
             **default_responses,
+            422: {"description": "Unprocessable Content"},
         }
     )
 )
@@ -741,6 +750,7 @@ def add_teacher(
         {
             **default_responses,
             201: {"description": "Created"},
+            422: {"description": "Unprocessable Content"},
         }
     )
 )
@@ -800,6 +810,7 @@ def update_teacher(
             **default_responses,
             404: {"description": "Not Found"},
             409: {"description": "Conflict - Teacher has assigned lectures!"},
+            422: {"description": "Unprocessable Content"},
         }
     )
 )
@@ -814,9 +825,9 @@ def delete_teacher(
     if teacher_id < 1:
         raise HTTPException(status_code=422, detail="Teacher ID must be a positive integer.")
 
-    teacher = Teacher.select().where(Teacher.id == teacher_id).get()
-
-    if not teacher:
+    try:
+        teacher = Teacher.select().where(Teacher.id == teacher_id).get()
+    except:
         raise HTTPException(status_code=404, detail=f"Professor with the id: {teacher_id} not found")
 
     teacher_lectures = Lecture.select().where(Lecture.id_titular == teacher_id)
@@ -848,6 +859,7 @@ def delete_teacher(
                     }
                 }
             },
+            422: {"description": "Unprocessable Content"},
         }
     )
 )
@@ -911,7 +923,7 @@ def read_students(
         res = Student.select().order_by(Student.prenume)
 
     if not res:
-        raise HTTPException(status_code=404, detail="Students not found")
+        raise HTTPException(status_code=404, detail="No students found!")
 
     total_items = res.count()
     total_pages = math.ceil(total_items / items_per_page)
@@ -992,6 +1004,7 @@ def read_students(
         {
             **default_responses,
             404: {"description": "Not Found"},
+            422: {"description": "Unprocessable Content"},
         }
     )
 )
@@ -1050,6 +1063,7 @@ def read_student(student_id: int, request: Request, authorization: Annotated[str
                     }
                 }
             },
+            422: {"description": "Unprocessable Content"},
         }
     )
 )
@@ -1062,7 +1076,7 @@ def read_student_lectures(
 ):
 
     role, user_id = ValidateIdentity(authorization)
-    if (role != "student") or (student_id != int(user_id)):
+    if (role not in ["student", "admin"]) or (role == "student" and (student_id != int(user_id))):
         raise HTTPException(status_code=403, detail="You aren't authorized to access this resource")
 
     if student_id < 1:
@@ -1080,23 +1094,6 @@ def read_student_lectures(
 
     student_lectures_res = Student_Disciplina.select().where(Student_Disciplina.StudentID == student.id)
 
-    total_items = student_lectures_res.count()
-    total_pages = math.ceil(total_items / items_per_page)
-    start_index = (page - 1) * items_per_page
-    end_index = start_index + items_per_page
-
-    if start_index >= total_items:
-        raise HTTPException(status_code=416, detail={"max_page": total_pages,
-                                                      "items_per_page": items_per_page})
-
-    student_lectures_res = student_lectures_res.limit(items_per_page).offset(start_index)
-
-    student_lectures = []
-    for student_lecture in student_lectures_res:
-        lecture = Lecture.select().where(Lecture.cod == student_lecture).get()
-        lecture_dict = model_to_dict(lecture)
-        student_lectures.append(lecture_dict)
-
     links = {
         "self": {
             "href": request.url.path,
@@ -1105,28 +1102,53 @@ def read_student_lectures(
         "parent": {
             "href": '/'.join(request.url.path.split('/')[:-1]),
             "method": "GET",
-        }
+        },
+        "assign": {
+            "href": f"{request.url.path}",
+            "method": "POST",
+        },
     }
 
-    if page > 1:
-        links["first_page"] = {
-            "href": f"{request.url.path}?page=1&items_per_page={items_per_page}",
-            "method": "GET"
-        }
-        links["previous_page"] = {
-            "href": f"{request.url.path}?page={page - 1}&items_per_page={items_per_page}",
-            "method": "GET"
-        }
+    student_lectures = []
+    if student_lectures_res:
+        total_items = student_lectures_res.count()
+        total_pages = math.ceil(total_items / items_per_page)
+        start_index = (page - 1) * items_per_page
+        end_index = start_index + items_per_page
 
-    if page < total_pages:
-        links["next_page"] = {
-            "href": f"{request.url.path}?page={page + 1}&items_per_page={items_per_page}",
-            "method": "GET"
-        }
-        links["last_page"] = {
-            "href": f"{request.url.path}?page={total_pages}&items_per_page={items_per_page}",
-            "method": "GET"
-        }
+        if start_index >= total_items:
+            raise HTTPException(status_code=416, detail={"max_page": total_pages,
+                                                          "items_per_page": items_per_page})
+
+        student_lectures_res = student_lectures_res.limit(items_per_page).offset(start_index)
+
+        for student_lecture in student_lectures_res:
+            try:
+                lecture = Lecture.select().where(Lecture.cod == student_lecture).get()
+            except:
+                raise HTTPException(status_code=404, detail={"Student lecture not found!"})
+            lecture_dict = model_to_dict(lecture)
+            student_lectures.append(lecture_dict)
+
+        if page > 1:
+            links["first_page"] = {
+                "href": f"{request.url.path}?page=1&items_per_page={items_per_page}",
+                "method": "GET"
+            }
+            links["previous_page"] = {
+                "href": f"{request.url.path}?page={page - 1}&items_per_page={items_per_page}",
+                "method": "GET"
+            }
+
+        if page < total_pages:
+            links["next_page"] = {
+                "href": f"{request.url.path}?page={page + 1}&items_per_page={items_per_page}",
+                "method": "GET"
+            }
+            links["last_page"] = {
+                "href": f"{request.url.path}?page={total_pages}&items_per_page={items_per_page}",
+                "method": "GET"
+            }
 
     return {
         "lectures": {
@@ -1137,6 +1159,14 @@ def read_student_lectures(
                         "self": {
                             "href": f"{request.url.path}/{lecture['cod']}",
                             "method": "GET",
+                        },
+                        "parent": {
+                            "href": request.url.path,
+                            "method": "GET",
+                        },
+                        "unassign": {
+                            "href": f"{request.url.path}/{lecture['cod']}",
+                            "method": "DELETE",
                         }
                     }
                 }
@@ -1151,6 +1181,7 @@ def read_student_lectures(
         {
             **default_responses,
             404: {"description": "Not Found"},
+            422: {"description": "Unprocessable Content"},
         }
     )
 )
@@ -1178,9 +1209,9 @@ def read_student_lecture(
     if student_lecture_res.count() != 1:
         raise HTTPException(status_code=404, detail=f"Student not assigned to the lecture!")
 
-    student_lecture = Lecture.select().where(Lecture.cod == lecture_code.strip()).get()
-
-    if not student_lecture:
+    try:
+        student_lecture = Lecture.select().where(Lecture.cod == lecture_code.strip()).get()
+    except:
         raise HTTPException(status_code=404, detail=f"Lecture not found!")
 
     url = f"http://lectures_web_service:8004/api/academia/materials/{student_lecture.nume_disciplina}"
@@ -1201,7 +1232,11 @@ def read_student_lecture(
                 "parent": {
                     "href": '/'.join(request.url.path.split('/')[:-1]),
                     "method": "GET",
-                }
+                },
+                "unassign": {
+                    "href": f"{request.url.path}",
+                    "method": "DELETE",
+                },
             }
         }
 
@@ -1212,6 +1247,7 @@ def read_student_lecture(
 @app.post("/api/academia/students/", status_code=201, responses=(
         {
             **default_responses,
+            422: {"description": "Unprocessable Content"},
         }
     )
 )
@@ -1260,6 +1296,7 @@ def add_student(
         {
             **default_responses,
             201: {"description": "Created"},
+            422: {"description": "Unprocessable Content"},
         }
     )
 )
@@ -1324,6 +1361,7 @@ def update_student(
         {
             **default_responses,
             404: {"description": "Not Found"},
+            422: {"description": "Unprocessable Content"},
         }
     )
 )
@@ -1338,9 +1376,9 @@ def delete_student(
     if student_id < 1:
         raise HTTPException(status_code=422, detail="Student ID must be a positive integer.")
 
-    student = Student.select().where(Student.id == student_id).get()
-
-    if not student:
+    try:
+        student = Student.select().where(Student.id == student_id).get()
+    except:
         raise HTTPException(status_code=404, detail=f"Student with the id: {student_id} not found")
 
     Student_Disciplina.delete().where(Student_Disciplina.StudentID == student_id).execute()
@@ -1369,6 +1407,7 @@ def delete_student(
                     }
                 }
             },
+            422: {"description": "Unprocessable Content"},
         }
     )
 )
@@ -1386,7 +1425,7 @@ def read_lectures(
 ):
 
     role, user_id = ValidateIdentity(authorization)
-    if role not in ["profesor"]:
+    if role not in ["profesor", "admin"]:
         raise HTTPException(status_code=403, detail="You aren't authorized to access this resource")
 
     if year is not None and year and year < 1:
@@ -1418,7 +1457,7 @@ def read_lectures(
         res = Lecture.select().order_by(Lecture.cod)
 
     if not res:
-        raise HTTPException(status_code=404, detail="lecture not found")
+        raise HTTPException(status_code=404, detail="No lectures found!")
 
     total_items = res.count()
     total_pages = math.ceil(total_items / items_per_page)
@@ -1570,6 +1609,7 @@ def read_lecture(lecture_code: str, request: Request, authorization: Annotated[s
 @app.post("/api/academia/lectures/", status_code=201, responses=(
         {
             **default_responses,
+            422: {"description": "Unprocessable Content"},
         }
     )
 )
@@ -1614,6 +1654,7 @@ def add_lecture(
         {
             **default_responses,
             201: {"description": "Created"},
+            422: {"description": "Unprocessable Content"},
         }
     )
 )
@@ -1683,9 +1724,9 @@ def delete_lecture(
     if role not in ["admin"]:
         raise HTTPException(status_code=403, detail="You aren't authorized to delete this resource")
 
-    lecture = Lecture.select().where(Lecture.cod == lecture_code.strip()).get()
-
-    if not lecture:
+    try:
+        lecture = Lecture.select().where(Lecture.cod == lecture_code.strip()).get()
+    except:
         raise HTTPException(status_code=404, detail=f"Lecture with the code: {lecture_code.strip()} not found")
 
     Student_Disciplina.delete().where(Lecture.cod == lecture_code.strip()).execute()
@@ -1755,4 +1796,89 @@ def validate_materials_access(lecture_name: str, method: str, request: Request, 
                 "method": "GET",
             },
         }
+    }
+
+
+@app.post("/api/academia/students/{student_id}/lectures", responses=(
+        {
+            **default_responses,
+            404: {"description": "Not Found"},
+            409: {"description": "Conflict"},
+            422: {"description": "Unprocessable Content"},
+        }
+    )
+)
+def add_student_lecture(student_id: int, authorization: Annotated[str, Header()], lecture_code: str = Body(...)):
+
+    role, user_id = ValidateIdentity(authorization)
+    if role != "admin":
+        raise HTTPException(status_code=403, detail="You aren't authorized to access this resource")
+
+    if student_id < 1:
+        raise HTTPException(status_code=422, detail="Student ID must be a positive integer.")
+
+    try:
+        student = Student.select().where(Student.id == student_id).get()
+    except:
+        raise HTTPException(status_code=404, detail="Student not found")
+
+    try:
+        lecture = Lecture.select().where(Lecture.cod == lecture_code.strip()).get()
+    except:
+        raise HTTPException(status_code=404, detail="Lecture not found")
+
+    student_lecture_res = Student_Disciplina.select().where((Student_Disciplina.StudentID == student_id)
+                                                        & (Student_Disciplina.DisciplinaID == lecture_code.strip()))
+
+    if student_lecture_res.count() != 0:
+        raise HTTPException(status_code=409, detail="Student is already assigned to the lecture!")
+
+    try:
+        resource = {
+            "DisciplinaID": lecture_code.strip(),
+            "StudentID": student_id,
+        }
+
+        res = Student_Disciplina.insert(resource).execute()
+        return {"id": res, **resource}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error assigning lecture: {e}")
+
+
+@app.delete("/api/academia/students/{student_id}/lectures/{lecture_code}", responses=(
+        {
+            **default_responses,
+            404: {"description": "Not Found"},
+            422: {"description": "Unprocessable Content"},
+        }
+)
+          )
+def delete_student_lecture(student_id: int, lecture_code: str, authorization: Annotated[str, Header()]):
+    role, user_id = ValidateIdentity(authorization)
+    if role != "admin":
+        raise HTTPException(status_code=403, detail="You aren't authorized to access this resource")
+
+    if student_id < 1:
+        raise HTTPException(status_code=422, detail="Student ID must be a positive integer.")
+
+    try:
+        student = Student.select().where(Student.id == student_id).get()
+    except:
+        raise HTTPException(status_code=404, detail="Student not found")
+
+    try:
+        student_lecture = Student_Disciplina.select().where((Student_Disciplina.StudentID == student_id)
+                                                        & (Student_Disciplina.DisciplinaID == lecture_code.strip())).get()
+    except:
+        raise HTTPException(status_code=404, detail="Lecture not assigned to the student!")
+
+    delete_res = Student_Disciplina.delete().where((Student_Disciplina.StudentID == student_id)
+                                                   & (Student_Disciplina.DisciplinaID == lecture_code.strip())).execute()
+
+    if delete_res != 1:
+        raise HTTPException(status_code=500, detail=f"Failed to unassign the lecture: {lecture_code.strip()} from the student: {student_id}!")
+
+    return {
+        "status": "success",
+        "student_lecture": {**model_to_dict(student_lecture)}
     }

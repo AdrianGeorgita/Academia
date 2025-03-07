@@ -2,18 +2,13 @@ import React, { useEffect, useState } from "react";
 import {Link, useNavigate} from "react-router-dom";
 import NavBar from "../navBar/navBar";
 import "./dashboard.css";
+import { useStats } from "../context/statsContext";
 
 interface Links {
     self: { href: string; method: string };
     parent: { href: string; method: string };
     update: { href: string; method: string };
     delete: { href: string; method: string };
-}
-
-interface Stats {
-    students_count: number;
-    teachers_count: number;
-    lectures_count: number;
 }
 
 interface User {
@@ -25,12 +20,11 @@ interface User {
 }
 
 const AdminDashboard: React.FC = () => {
-    const [stats, setStats] = useState<Stats | null>(null);
+    const { stats, setStats } = useStats();
     const [users, setUsers] = useState<User[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string>("");
     const navigate = useNavigate();
-    const [paginationLinks, setPaginationLinks] = useState<Record<string, string>>({});
 
     const host = "http://localhost:8000";
     const statsAPI = "http://localhost:8000/api/academia/stats";
@@ -60,7 +54,7 @@ const AdminDashboard: React.FC = () => {
 
             if (!response.ok) throw new Error("Failed to fetch data");
             const data = await response.json();
-            setStats(data.stats);
+            setStats(data);
 
             let allUsers: User[] = [];
 
@@ -105,13 +99,6 @@ const AdminDashboard: React.FC = () => {
             allUsers.sort((a, b) => b.id - a.id);
 
             setUsers(allUsers.slice(0, 10));
-
-            setPaginationLinks({
-                first: data["_links"]["first_page"]?.href || "",
-                previous: data["_links"]["previous_page"]?.href || "",
-                next: data["_links"]["next_page"]?.href || "",
-                last: data["_links"]["last_page"]?.href || "",
-            });
         } catch (error) {
             if (error instanceof Error) setError(error.message);
         } finally {
@@ -136,9 +123,9 @@ const AdminDashboard: React.FC = () => {
             <h1 className="page-title">Admin Dashboard</h1>
 
             <div className="stats-container">
-                <p>Total Students: {stats?.students_count}</p>
-                <p>Total Teachers: {stats?.teachers_count}</p>
-                <p>Total Lectures: {stats?.lectures_count}</p>
+                <p>Total Students: {stats?.stats.students_count}</p>
+                <p>Total Teachers: {stats?.stats.teachers_count}</p>
+                <p>Total Lectures: {stats?.stats.lectures_count}</p>
             </div>
 
             <button className="create-user-button" onClick={handleCreateUser}>
@@ -154,7 +141,7 @@ const AdminDashboard: React.FC = () => {
 
                         <Link
                             to={`/dashboard/${user.rol.toLowerCase()}s/${user.id}`}
-                            state={{apiUrl: user["_links"]["self"].href}}
+                            state={{apiUrl: user["_links"]["self"].href, lecturesApi: stats ? stats : ["view_lectures"]}}
                         >
                             <button className="view-profile-btn">View Profile</button>
                         </Link>
