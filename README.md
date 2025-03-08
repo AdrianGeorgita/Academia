@@ -52,7 +52,8 @@ The application consists of three RESTful web services:
 	- Can view information about students enrolled in their courses.
 	- Can manage their assigned disciplines.
 	- Can view other courses without making modifications.
-- ![ezgif com-resize (3)](https://github.com/user-attachments/assets/a35a935f-b89a-49f5-8855-631e227fb6cb)
+- ![ezgif com-resize (6)](https://github.com/user-attachments/assets/8c22db8f-55b6-4e9d-8499-c11d86381fc5)
+
 
 3. Student
 	- Can manage personal information.
