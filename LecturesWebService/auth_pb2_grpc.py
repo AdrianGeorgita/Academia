@@ -5,7 +5,7 @@ import warnings
 
 import auth_pb2 as auth__pb2
 
-GRPC_GENERATED_VERSION = '1.68.0'
+GRPC_GENERATED_VERSION = '1.70.0'
 GRPC_VERSION = grpc.__version__
 _version_not_supported = False
 
@@ -49,6 +49,11 @@ class AuthenticationStub(object):
                 request_serializer=auth__pb2.InvalidationRequest.SerializeToString,
                 response_deserializer=auth__pb2.InvalidationResponse.FromString,
                 _registered_method=True)
+        self.Register = channel.unary_unary(
+                '/auth.Authentication/Register',
+                request_serializer=auth__pb2.RegistrationRequest.SerializeToString,
+                response_deserializer=auth__pb2.RegistrationResponse.FromString,
+                _registered_method=True)
 
 
 class AuthenticationServicer(object):
@@ -72,6 +77,12 @@ class AuthenticationServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def Register(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_AuthenticationServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -89,6 +100,11 @@ def add_AuthenticationServicer_to_server(servicer, server):
                     servicer.Invalidate,
                     request_deserializer=auth__pb2.InvalidationRequest.FromString,
                     response_serializer=auth__pb2.InvalidationResponse.SerializeToString,
+            ),
+            'Register': grpc.unary_unary_rpc_method_handler(
+                    servicer.Register,
+                    request_deserializer=auth__pb2.RegistrationRequest.FromString,
+                    response_serializer=auth__pb2.RegistrationResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -172,6 +188,33 @@ class Authentication(object):
             '/auth.Authentication/Invalidate',
             auth__pb2.InvalidationRequest.SerializeToString,
             auth__pb2.InvalidationResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def Register(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/auth.Authentication/Register',
+            auth__pb2.RegistrationRequest.SerializeToString,
+            auth__pb2.RegistrationResponse.FromString,
             options,
             channel_credentials,
             insecure,

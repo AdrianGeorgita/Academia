@@ -1,6 +1,8 @@
 import uuid
 from concurrent import futures
 import grpc
+from fastapi import requests
+
 import auth_pb2
 import auth_pb2_grpc
 import jwt
@@ -49,10 +51,14 @@ class AuthenticationService(auth_pb2_grpc.Authentication):
 
         res = User.select().where((User.email == request.username) & (User.parola == passwd_hash))
 
+        peer = context.peer()
+
+        peer_host = peer.split(":")[1].strip()
+
         jws = None
         if res.count() == 1:
             payload = {
-                "iss": "URL HERE",     # GET URL of service that requested the token
+                "iss": peer_host,
                 "sub": str(res.first().ID),
                 "exp": round(time.time()) + 43200,     # 12 hours
                 "jti": str(uuid.uuid4()),
@@ -91,6 +97,29 @@ class AuthenticationService(auth_pb2_grpc.Authentication):
             body = "\nBlacklisted"
 
         return auth_pb2.ValidationResponse(status=status + body)
+
+    def Register(self, request, context):
+        status = "Success"
+        uid = -1
+
+        passwd_hash = hashlib.md5(request.password.encode()).hexdigest()
+        res = User.select().where((User.email == request.username))
+
+        if res.count() == 1:
+            status = "Conflict"
+        else:
+            try:
+                resource = {
+                    "email": request.username.strip(),
+                    "parola": passwd_hash,
+                    "rol": request.role.strip()
+                }
+
+                uid = User.insert(resource).execute()
+            except:
+                status = "Failed"
+
+        return auth_pb2.RegistrationResponse(status=status, uid=str(uid))
 
 def serve():
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))

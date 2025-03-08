@@ -11,6 +11,10 @@ from re import match
 from fastapi import FastAPI, Body, Response, HTTPException, Request, Header
 from fastapi.middleware.cors import CORSMiddleware
 
+from pydantic import BaseModel
+
+import hashlib
+
 app = FastAPI()
 
 origins = [
@@ -28,7 +32,12 @@ app.add_middleware(
     allow_headers=["authorization", "content-type"],
 )
 
-email_regex = "^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$"
+email_regex = r"^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$"
+
+class RegisterRequest(BaseModel):
+    username: str
+    password: str
+    role: str
 
 def ValidateIdentity(token: str):
     if not token.startswith("Bearer "):
@@ -59,6 +68,13 @@ def InvalidateToken(token: str):
 
         return response
 
+def Register(username: str, password: str, role: str):
+    with grpc.insecure_channel("localhost:50051") as channel:
+        stub = auth_pb2_grpc.AuthenticationStub(channel)
+        response = stub.Register(auth_pb2.RegistrationRequest(username=username, password=password, role=role))
+
+        return response.status, response.uid
+
 @app.post("/api/academia/login", status_code=201, responses=(
         {
             500: {"description": "Internal Server Error"},
@@ -72,7 +88,7 @@ def login(
         password: str = Body(...),
 ):
     try:
-        if not match(email_regex, email):
+        if not match(email_regex, email.strip()):
             response.status_code = 422
             return {"error": "Invalid email"}
 
@@ -92,7 +108,7 @@ def login(
             home_page = f"http://localhost:8000/api/academia/lectures"
             profile_page = f"http://localhost:8000/api/academia/teachers/{uid}"
         elif role == "admin":
-            home_page = f"http://localhost:8000/api/academia/teachers"
+            home_page = f"http://localhost:8000/api/academia/stats"
 
         return {
             "token": response.jws,
@@ -147,3 +163,35 @@ def logout(
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error logging out: {e}")
+
+
+@app.post("/api/academia/register", status_code=201, responses=(
+        {
+            500: {"description": "Internal Server Error"},
+            422: {"description": "Unprocessable Content"},
+        }
+    )
+)
+def register(
+        authorization: Annotated[str, Header()],
+        body: RegisterRequest = Body(...),
+):
+    user_role, uid = ValidateIdentity(authorization)
+    if user_role != "admin":
+        raise HTTPException(status_code=403, detail="You aren't authorized to access this resource")
+
+    if not match(email_regex, body.username.strip()):
+        raise HTTPException(status_code=422, detail="Invalid email")
+
+    if body.role.strip() not in ["profesor", "student"]:
+        raise HTTPException(status_code=422, detail="Invalid role")
+
+    status, uid = Register(body.username.strip(), body.password, body.role.strip())
+
+    if status != "Success":
+        raise HTTPException(status_code=500, detail=f"Error registering user!")
+
+    return {"uid": int(uid)}
+
+
+

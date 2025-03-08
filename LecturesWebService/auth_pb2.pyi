@@ -41,3 +41,21 @@ class InvalidationResponse(_message.Message):
     STATUS_FIELD_NUMBER: _ClassVar[int]
     status: str
     def __init__(self, status: _Optional[str] = ...) -> None: ...
+
+class RegistrationRequest(_message.Message):
+    __slots__ = ("username", "password", "role")
+    USERNAME_FIELD_NUMBER: _ClassVar[int]
+    PASSWORD_FIELD_NUMBER: _ClassVar[int]
+    ROLE_FIELD_NUMBER: _ClassVar[int]
+    username: str
+    password: str
+    role: str
+    def __init__(self, username: _Optional[str] = ..., password: _Optional[str] = ..., role: _Optional[str] = ...) -> None: ...
+
+class RegistrationResponse(_message.Message):
+    __slots__ = ("status", "uid")
+    STATUS_FIELD_NUMBER: _ClassVar[int]
+    UID_FIELD_NUMBER: _ClassVar[int]
+    status: str
+    uid: str
+    def __init__(self, status: _Optional[str] = ..., uid: _Optional[str] = ...) -> None: ...

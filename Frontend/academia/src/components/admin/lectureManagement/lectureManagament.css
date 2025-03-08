@@ -1,0 +1,28 @@
+.lecture-management-container {
+    max-width: 100%;
+    margin: 50px auto;
+    padding: 20px;
+    background-color: #f9f9f9;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    text-align: left;
+}
+
+.lecture-management-details {
+    text-align: left;
+    margin-bottom: 30px;
+}
+
+.lecture-management-label {
+    display: flex;
+    flex-direction: column;
+    font-size: 16px;
+    margin-bottom: 15px;
+    color: #555;
+}
+
+.lecture-management-label strong {
+    margin-bottom: 5px;
+}
+
+

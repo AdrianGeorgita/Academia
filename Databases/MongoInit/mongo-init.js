@@ -1,13 +1,7 @@
 db = db.getSiblingDB('admin');
 
 function userExists(username) {
-  var users = db.getUsers ? db.getUsers() : [];
-  for (var i = 0; i < users.length; i++) {
-    if (users[i].user === username) {
-      return true;
-    }
-  }
-  return false;
+  return db.system.users.find({ user: username }).count() > 0;
 }
 
 if (!userExists('dbAdmin')) {

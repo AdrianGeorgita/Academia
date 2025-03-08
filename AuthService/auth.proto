@@ -6,6 +6,7 @@ service Authentication {
   rpc Authenticate (AuthenticationRequest) returns (AuthenticationResponse) {}
   rpc Validate (ValidationRequest) returns (ValidationResponse) {}
   rpc Invalidate (InvalidationRequest) returns (InvalidationResponse) {}
+  rpc Register (RegistrationRequest) returns (RegistrationResponse) {}
 }
 
 message AuthenticationRequest {
@@ -31,6 +32,17 @@ message InvalidationRequest {
 
 message InvalidationResponse {
   string status = 1;
+}
+
+message RegistrationRequest {
+  string username = 1;
+  string password = 2;
+  string role = 3;
+}
+
+message RegistrationResponse {
+  string status = 1;
+  string uid = 2;
 }
 
 

@@ -65,6 +65,8 @@ app.add_middleware(
     allow_headers=["authorization", "content-type"],
 )
 
+MAX_ITEMS_PER_PAGE = 100
+
 @app.get("/")
 async def root():
     return {"message": "Hello World"}
@@ -95,27 +97,56 @@ async def get_materials(
     if (role not in ["profesor"]):
         raise HTTPException(status_code=403, detail="You aren't authorized to access this resource")
 
+    if page < 1:
+        raise HTTPException(status_code=422, detail="Page number must be positive!")
+    if items_per_page < 1 or items_per_page > MAX_ITEMS_PER_PAGE:
+        raise HTTPException(status_code=422, detail="Items per page must be positive and smaller than 100!")
+
     start_index = (page - 1) * items_per_page
     total_items = pos_collection.count_documents({})
+    total_pages = ceil(total_items / items_per_page)
 
     if start_index >= total_items:
-        raise HTTPException(status_code=416, detail={"max_page": ceil(total_items / items_per_page),
+        raise HTTPException(status_code=416, detail={"max_page": total_pages,
                                                       "items_per_page": items_per_page})
 
     collection = pos_collection.find({}).skip(start_index).limit(items_per_page)
     materials = json.loads(dumps(collection))
+
+    links = {
+        "self": {
+            "href": request.url.path,
+            "method": "GET",
+        },
+        "parent": {
+            "href": '/'.join(request.url.path.split('/')[:-1]),
+            "method": "GET",
+        }
+    }
+
+    if page > 1:
+        links["first_page"] = {
+            "href": f"{request.url.path}?page=1&items_per_page={items_per_page}",
+            "method": "GET"
+        }
+        links["previous_page"] = {
+            "href": f"{request.url.path}?page={page - 1}&items_per_page={items_per_page}",
+            "method": "GET"
+        }
+
+    if page < total_pages:
+        links["next_page"] = {
+            "href": f"{request.url.path}?page={page + 1}&items_per_page={items_per_page}",
+            "method": "GET"
+        }
+        links["last_page"] = {
+            "href": f"{request.url.path}?page={total_pages}&items_per_page={items_per_page}",
+            "method": "GET"
+        }
+
     return {
         "materials": materials,
-        "_links": {
-            "self": {
-                "href": request.url.path,
-                "method": "GET",
-            },
-            "parent": {
-                "href": '/'.join(request.url.path.split('/')[:-1]),
-                "method": "GET",
-            }
-        }
+        "_links": links
     }
 
 
@@ -124,7 +155,7 @@ async def get_course_materials(course: str, request: Request, authorization: Ann
 
     role, uid = ValidateIdentity(authorization)
 
-    url = f"http://study_web_service:8000/api/academia/lectures/authorization/{course}?method=GET"
+    url = f"http://study_web_service:8000/api/academia/lectures/authorization/{course.strip()}?method=GET"
     headers = {"Authorization": authorization}
     response = requests.get(url, headers=headers)
 
@@ -134,7 +165,7 @@ async def get_course_materials(course: str, request: Request, authorization: Ann
         if data["status"] not in ["authorized", "owner"]:
              raise HTTPException(status_code=403, detail="You aren't authorized to access this resource")
 
-        collection = pos_collection.find_one({"disciplina": course})
+        collection = pos_collection.find_one({"disciplina": course.strip()})
         materials = json.loads(dumps(collection))
 
         dictionary = {
@@ -171,7 +202,7 @@ async def add_course_materials(course: str, request: Request, authorization: Ann
 
     role, uid = ValidateIdentity(authorization)
 
-    url = f"http://study_web_service:8000/api/academia/lectures/authorization/{course}?method=POST"
+    url = f"http://study_web_service:8000/api/academia/lectures/authorization/{course.strip()}?method=POST"
     headers = {"Authorization": authorization}
     response = requests.get(url, headers=headers)
 
@@ -183,7 +214,7 @@ async def add_course_materials(course: str, request: Request, authorization: Ann
 
     body = await request.json()
 
-    evaluation = body["probe-evaluare"]
+    evaluation = body.get("probe-evaluare", {})
 
     # Validate Grade Percentages
     percentage = 0
@@ -196,7 +227,7 @@ async def add_course_materials(course: str, request: Request, authorization: Ann
         raise HTTPException(status_code=422, detail="Invalid Percentages")
 
     # Validate Course Materials
-    course_materials = body["materiale-curs"]
+    course_materials = body.get("materiale-curs", [])
     for course_material in course_materials:
         # Validate name and path ?
         if course_material["nume-fisier"] == "":
@@ -211,7 +242,7 @@ async def add_course_materials(course: str, request: Request, authorization: Ann
             raise HTTPException(status_code=422, detail="Invalid file content encoding")
 
         if not course_material["nume-fisier"].lower().endswith(".pdf"):
-            raise HTTPException(status_code=422, detail="Only PDF files are allowed")
+            raise HTTPException(status_code=415, detail="Only .pdf files are allowed")
 
         if len(file_content) > 5 * 1024 * 1024:
             raise HTTPException(status_code=422, detail="File size exceeds limit")
@@ -220,7 +251,8 @@ async def add_course_materials(course: str, request: Request, authorization: Ann
             raise HTTPException(status_code=422, detail="Name too long")
 
     # Validate Laboratory Materials
-    lab_materials = body["materiale-laborator"]
+
+    lab_materials = body.get("materiale-laborator", [])
     for lab_material in lab_materials:
         # Validate name and path ?
         if lab_material["nume-fisier"] == "" :
@@ -238,12 +270,12 @@ async def add_course_materials(course: str, request: Request, authorization: Ann
             raise HTTPException(status_code=422, detail="File size exceeds limit")
 
         if not lab_material["nume-fisier"].lower().endswith(".pdf"):
-            raise HTTPException(status_code=422, detail="Only PDF files are allowed")
+            raise HTTPException(status_code=415, detail="Only .pdf files are allowed")
 
         if len(lab_material["nume-fisier"]) > 256:
             raise HTTPException(status_code=422, detail="Name too long")
 
-    document_exists = pos_collection.find_one({"disciplina": course})
+    document_exists = pos_collection.find_one({"disciplina": course.strip()})
     if document_exists:
         raise HTTPException(status_code=409, detail="Course materials already exist")
 
@@ -272,7 +304,7 @@ async def update_course_materials(course: str, request: Request, authorization: 
 
     role, uid = ValidateIdentity(authorization)
 
-    url = f"http://study_web_service:8000/api/academia/lectures/authorization/{course}?method=GET"
+    url = f"http://study_web_service:8000/api/academia/lectures/authorization/{course.strip()}?method=GET"
     headers = {"Authorization": authorization}
     response = requests.get(url, headers=headers)
 
@@ -282,12 +314,12 @@ async def update_course_materials(course: str, request: Request, authorization: 
         if data["status"] != "owner":
             raise HTTPException(status_code=403, detail="You aren't authorized to access this resource")
 
-    if not pos_collection.find_one({"disciplina": course}):
+    if not pos_collection.find_one({"disciplina": course.strip()}):
         raise HTTPException(status_code=404, detail="Course not found")
 
     body = await request.json()
 
-    evaluation = body["probe-evaluare"]
+    evaluation = body.get("probe-evaluare", {})
 
     # Validate Grade Percentages
     percentage = 0
@@ -300,7 +332,7 @@ async def update_course_materials(course: str, request: Request, authorization: 
         raise HTTPException(status_code=422, detail="Invalid Percentages")
 
     # Validate Course Materials
-    course_materials = body["materiale-curs"]
+    course_materials = body.get("materiale-curs", [])
     for course_material in course_materials:
         # Validate name and path ?
         if course_material["nume-fisier"] == "":
@@ -315,7 +347,7 @@ async def update_course_materials(course: str, request: Request, authorization: 
             raise HTTPException(status_code=422, detail="Invalid file content encoding")
 
         if not course_material["nume-fisier"].lower().endswith(".pdf"):
-            raise HTTPException(status_code=422, detail="Only PDF files are allowed")
+            raise HTTPException(status_code=415, detail="Only .pdf files are allowed")
 
         if len(file_content) > 5 * 1024 * 1024:
             raise HTTPException(status_code=422, detail="File size exceeds limit")
@@ -324,7 +356,7 @@ async def update_course_materials(course: str, request: Request, authorization: 
             raise HTTPException(status_code=422, detail="Name too long")
 
     # Validate Laboratory Materials
-    lab_materials = body["materiale-laborator"]
+    lab_materials = body.get("materiale-laborator", [])
     for lab_material in lab_materials:
         # Validate name and path ?
         if lab_material["nume-fisier"] == "":
@@ -342,13 +374,13 @@ async def update_course_materials(course: str, request: Request, authorization: 
             raise HTTPException(status_code=422, detail="File size exceeds limit")
 
         if not lab_material["nume-fisier"].lower().endswith(".pdf"):
-            raise HTTPException(status_code=422, detail="Only PDF files are allowed")
+            raise HTTPException(status_code=415, detail="Only .pdf files are allowed")
 
         if len(lab_material["nume-fisier"]) > 256:
             raise HTTPException(status_code=422, detail="Name too long")
 
     pos_collection.update_one(
-        {"disciplina": course},
+        {"disciplina": course.strip()},
         {
             "$set": {
                 "probe-evaluare": evaluation,

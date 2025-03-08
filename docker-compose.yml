@@ -8,7 +8,8 @@ services:
       - "0.0.0.0:50051:50051"
       - "0.0.0.0:8008:8008"
     depends_on:
-      - auth_db
+        auth_db:
+          condition: service_healthy
     networks:
       - app_network
     environment:
@@ -22,7 +23,8 @@ services:
     ports:
       - "0.0.0.0:8000:8000"
     depends_on:
-      - study_db
+      study_db:
+        condition: service_healthy
     networks:
       - app_network
     environment:
@@ -35,7 +37,8 @@ services:
     ports:
       - "0.0.0.0:8004:8004"
     depends_on:
-      - lectures_db
+      lectures_db:
+        condition: "service_healthy"
     networks:
       - app_network
     environment:
@@ -54,6 +57,12 @@ services:
       MYSQL_PASSWORD: passwdauth
       MYSQL_DATABASE: auth_service_db
       MYSQL_TCP_PORT: 3308
+    healthcheck:
+      test: ["CMD", "mariadb", "-u", "authAdmin", "-ppasswdauth", "-e", "SELECT 1"]
+      interval: 10s
+      timeout: 15s
+      retries: 20
+      start_period: 180s
     ports:
       - "0.0.0.0:3308:3308"
     networks:
@@ -72,6 +81,12 @@ services:
       MYSQL_PASSWORD: passwdpos
       MYSQL_DATABASE: study_service_db
       #MYSQL_TCP_PORT: 3350
+    healthcheck:
+      test: ["CMD", "mariadb", "-u", "posadmin", "-ppasswdpos", "-e", "SELECT 1"]
+      interval: 10s
+      timeout: 15s
+      retries: 20
+      start_period: 180s
     ports:
       - "0.0.0.0:3306:3306"
     networks:
@@ -92,6 +107,12 @@ services:
       - MONGO_INITDB_ROOT_USERNAME=${MONGO_INITDB_ROOT_USERNAME}
       - MONGO_INITDB_ROOT_PASSWORD=${MONGO_INITDB_ROOT_PASSWORD}
       - MONGO_INITDB_DATABASE=${MONGO_DB}
+    healthcheck:
+      test: [ "CMD", "mongosh", "--username", "$MONGO_INITDB_ROOT_USERNAME", "--password", "$MONGO_INITDB_ROOT_PASSWORD", "--authenticationDatabase", "admin", "--eval", "db.adminCommand('ping')" ]
+      interval: 5s
+      timeout: 10s
+      retries: 20
+      start_period: 120s
     volumes:
       - lectures_db_data:/data/db
       - ./Databases/MongoInit/mongodb.conf:/etc/mongo/mongod.conf:ro
