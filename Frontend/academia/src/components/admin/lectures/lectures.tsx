@@ -107,7 +107,7 @@ const AdminLecturesPage: React.FC = () => {
     if (error) return <div className="error">Error: {error}</div>;
 
     return (
-        <div className="lectures-container">
+        <div className="admin-lectures-container">
             <NavBar />
             <div className="content">
                 <div className="header-section">
@@ -161,16 +161,16 @@ const AdminLecturesPage: React.FC = () => {
                     </div>
                 </div>
 
-                <div className="list-section">
-                    <ul className="lecture-list">
+                <div className="admin-list-section">
+                    <ul className="admin-lecture-list">
                         {lectures.map((lecture) => (
-                            <li key={lecture.cod} className="lecture-item">
-                                <div className="lecture-info">
+                            <li key={lecture.cod} className="admin-lecture-item">
+                                <div className="admin-lecture-info">
                                     {lecture.cod} - {lecture.nume_disciplina}
                                 </div>
                                 <Link to={`/dashboard/lectures/${lecture.cod}`}
                                       state={{apiUrl: lecture["_links"]["self"].href}}>
-                                    <button className="view-details-btn">View Details</button>
+                                    <button className="admin-view-details-btn">View Details</button>
                                 </Link>
                             </li>
                         ))}

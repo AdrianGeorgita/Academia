@@ -1,14 +1,14 @@
-.lectures-container {
+.admin-lectures-container {
     padding: 20px;
     font-family: Arial, sans-serif;
 }
 
-.lecture-list {
+.admin-lecture-list {
     list-style-type: none;
     padding: 0;
 }
 
-.lecture-item {
+.admin-lecture-item {
     border: 1px solid #ccc;
     margin-bottom: 10px;
     padding: 10px;
@@ -20,11 +20,11 @@
     align-items: center;
 }
 
-.lecture-item .lecture-info {
+.admin-lecture-item .admin-lecture-info {
     flex-grow: 1;
 }
 
-.lecture-item .view-details-btn {
+.admin-lecture-item .admin-view-details-btn {
     background-color: #3498db;
     color: white;
     border: none;
@@ -35,6 +35,20 @@
     transition: background-color 0.3s;
 }
 
-.lecture-item .view-details-btn:hover {
+.admin-lecture-item .admin-view-details-btn:hover {
     background-color: #2980b9;
+}
+
+.admin-list-section select {
+    padding: 6px;
+    border: 1px solid #bdc3c7;
+    border-radius: 5px;
+    font-size: 1.1rem;
+    outline: none;
+    transition: border-color 0.3s ease-in-out;
+    background-color: #ffffff;
+
+    cursor: pointer;
+    color: #2c3e50;
+    width: 160px;
 }

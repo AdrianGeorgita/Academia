@@ -175,13 +175,13 @@ const LectureManagementPage: React.FC = () => {
             <NavBar />
             <div className="lecture-management-container">
                 <h1 className="profile-title">Edit Lecture</h1>
-                <div className="lecture-details">
-                    <label className="lecture-label">
+                <div className="lecture-management-details">
+                    <label className="lecture-management-label">
                         <strong>Code:</strong>
                         <input type="text" name="cod" value={lecture.cod}
                                onChange={handleChange} className="editable-input"/>
                     </label>
-                    <label className="lecture-label">
+                    <label className="lecture-management-label">
                         <strong>Lecture Name:</strong>
                         <input type="text" name="nume_disciplina" value={lecture.nume_disciplina}
                                onChange={handleChange} className="editable-input"/>
@@ -202,7 +202,7 @@ const LectureManagementPage: React.FC = () => {
                             ))}
                         </datalist>
                     </label>
-                    <label className="lecture-label">
+                    <label className="lecture-management-label">
                         <strong>Year:</strong>
                         <input type="number" min={1} max={4} name="an_studiu" value={lecture.an_studiu}
                                onChange={handleChange} className="editable-input"/>

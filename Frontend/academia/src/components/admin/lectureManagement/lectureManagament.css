@@ -8,12 +8,12 @@
     text-align: left;
 }
 
-.lecture-details {
+.lecture-management-details {
     text-align: left;
     margin-bottom: 30px;
 }
 
-.lecture-label {
+.lecture-management-label {
     display: flex;
     flex-direction: column;
     font-size: 16px;
@@ -21,15 +21,8 @@
     color: #555;
 }
 
-.lecture-label strong {
+.lecture-management-label strong {
     margin-bottom: 5px;
 }
 
-.editable-input {
-    padding: 8px;
-    font-size: 16px;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    width: 100%;
-    max-width: 400px;
-}
+
