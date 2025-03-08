@@ -36,7 +36,7 @@ const CreatePage = () => {
 
             setEntityType(location.state?.category || 'student');
 
-            const teachers_response = await fetch(`${HOST_URL}${stats?._links.view_teachers.href}?items_per_page=100`, {
+            const teachers_response = await fetch(`${HOST_URL}${stats?._links.view_teachers.href}?items_per_page=1000`, {
                 method: stats?._links.view_teachers.method,
                 headers: {
                     "Content-Type": "application/json",
@@ -66,12 +66,10 @@ const CreatePage = () => {
         const selectedValue = e.target.value;
         setSelectedTeacher(selectedValue);
 
-        // Find teacher object that matches the selected value
         const selectedTeacherObj = allTeachers.find(
             (teacher) => `${teacher.prenume} ${teacher.nume} - ${teacher.email}` === selectedValue
         );
 
-        // Update formData with the teacher's ID (if found)
         setFormData((prev: any) => ({
             ...prev,
             coordinator_id: selectedTeacherObj ? selectedTeacherObj.id : '',

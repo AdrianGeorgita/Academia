@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import {Link, useLocation} from "react-router-dom";
+import {Link, useLocation, useNavigate} from "react-router-dom";
 import NavBar from "../navBar/navBar";
 import "./users.css";
 import { useStats } from "../context/statsContext";
@@ -32,6 +32,8 @@ const UsersList: React.FC<UsersListProps> = ({ category }) => {
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string>("");
     const { stats } = useStats();
+
+    const navigate = useNavigate();
 
     const [search, setSearch] = useState<string>("");
     const [degree, setDegree] = useState<string>("");
@@ -83,7 +85,10 @@ const UsersList: React.FC<UsersListProps> = ({ category }) => {
 
     const fetchUsers = async (url: string) => {
         try {
-            if (!token) throw new Error("Unauthorized");
+            if (!token) {
+                navigate("/login");
+                return;
+            }
 
             const response = await fetch(url, {
                 method: "GET",
@@ -126,6 +131,7 @@ const UsersList: React.FC<UsersListProps> = ({ category }) => {
     };
 
     useEffect(() => {
+
         fetchUsers(buildApiUrl(`${host}/api/academia/${category}`));
 
     }, [category, itemsPerPage]);
@@ -153,12 +159,15 @@ const UsersList: React.FC<UsersListProps> = ({ category }) => {
                         />
                         {category === "students" && (
                             <>
-                                <input
-                                    type="text"
-                                    placeholder="Degree"
+                                <select
+                                    className="editable-input"
                                     value={degree}
                                     onChange={(e) => setDegree(e.target.value)}
-                                />
+                                >
+                                    <option value="licenta">Study Cycle</option>
+                                    <option value="licenta">Licenta</option>
+                                    <option value="master">Master</option>
+                                </select>
                                 <input
                                     type="number"
                                     placeholder="Year"
@@ -175,18 +184,27 @@ const UsersList: React.FC<UsersListProps> = ({ category }) => {
                         )}
                         {category === "teachers" && (
                             <>
-                                <input
-                                    type="text"
-                                    placeholder="Teaching Degree"
+                                <select
+                                    className="editable-input"
                                     value={teachingDegree}
                                     onChange={(e) => setTeachingDegree(e.target.value)}
-                                />
-                                <input
-                                    type="text"
-                                    placeholder="Association Type"
+                                >
+                                    <option value="">Teaching Degree</option>
+                                    <option value="prof">Profesor</option>
+                                    <option value="conf">Conferentiar</option>
+                                    <option value="sef_lucr">Sef Lucrari</option>
+                                    <option value="asist">Asistent</option>
+                                </select>
+                                <select
+                                    className="editable-input"
                                     value={associationType}
                                     onChange={(e) => setAssociationType(e.target.value)}
-                                />
+                                >
+                                    <option value="titular">Association Type</option>
+                                    <option value="titular">Titular</option>
+                                    <option value="asociat">Asociat</option>
+                                    <option value="extern">Extern</option>
+                                </select>
                                 <input
                                     type="text"
                                     placeholder="Affiliation"

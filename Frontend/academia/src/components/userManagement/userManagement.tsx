@@ -107,17 +107,19 @@ const UserManagementPage: React.FC<UsersListProps> = ({ category }) => {
                         },
                     });
 
-                    if (!lectures_response.ok) {
+                    if (!lectures_response.ok && lectures_response.status !== 404) {
                         const errorBody = await lectures_response.json();
                         throw new Error(errorBody.detail || lectures_response.statusText);
                     }
 
-                    const lectures_data = await lectures_response.json();
-                    setStudentLectures(lectures_data.lectures.lectures);
-                    setStudentLecturesLinks(lectures_data.lectures._links);
+                    if(lectures_response.status !== 404) {
+                        const lectures_data = await lectures_response.json();
+                        setStudentLectures(lectures_data.lectures.lectures);
+                        setStudentLecturesLinks(lectures_data.lectures._links);
+                    }
 
 
-                    const all_lectures_response = await fetch(`${HOST_URL}${lecturesApi.href}?items_per_page=100`, {
+                    const all_lectures_response = await fetch(`${HOST_URL}${lecturesApi.href}?items_per_page=1000`, {
                         method: lecturesApi.method,
                         headers: {
                             "Content-Type": "application/json",

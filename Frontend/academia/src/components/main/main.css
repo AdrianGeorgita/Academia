@@ -56,3 +56,18 @@
 .view-lecture-button:hover {
     background-color: #2980b9;
 }
+
+
+.filters-section select {
+    padding: 6px;
+    border: 1px solid #bdc3c7;
+    border-radius: 5px;
+    font-size: 1.1rem;
+    outline: none;
+    transition: border-color 0.3s ease-in-out;
+    background-color: #ffffff;
+
+    cursor: pointer;
+    color: #2c3e50;
+    width: 160px;
+}

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, {useEffect, useState} from 'react';
 import { useNavigate } from 'react-router-dom';
 import './login.css'; // Import the CSS file
 
@@ -31,6 +31,11 @@ const Login: React.FC = () => {
     const navigate = useNavigate();
 
     const loginAPI = "http://localhost:8008/api/academia/login"
+
+    useEffect(() => {
+        const token = localStorage.getItem('authToken');
+        if (token) navigate('/');
+    }, []);
 
     const fetchToken = async () => {
         try {

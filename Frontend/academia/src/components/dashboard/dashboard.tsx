@@ -25,6 +25,9 @@ const AdminDashboard: React.FC = () => {
     const [users, setUsers] = useState<User[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string>("");
+
+    const [itemsPerPage, setItemsPerPage] = useState(10);
+
     const navigate = useNavigate();
 
     const host = "http://localhost:8000";
@@ -60,7 +63,7 @@ const AdminDashboard: React.FC = () => {
             let allUsers: User[] = [];
 
             if (data["_links"]["view_students"]) {
-                const studentsResponse = await fetch(`${host}${data["_links"]["view_students"]["href"]}?items_per_page=100`, {
+                const studentsResponse = await fetch(`${host}${data["_links"]["view_students"]["href"]}?items_per_page=1000`, {
                     method: data["_links"]["view_students"]["method"],
                     headers: {
                         "Content-Type": "application/json",
@@ -79,7 +82,7 @@ const AdminDashboard: React.FC = () => {
             }
 
             if (data["_links"]["view_teachers"]) {
-                const teachersResponse = await fetch(`${host}${data["_links"]["view_teachers"]["href"]}?items_per_page=100`, {
+                const teachersResponse = await fetch(`${host}${data["_links"]["view_teachers"]["href"]}?items_per_page=1000`, {
                     method: data["_links"]["view_teachers"]["method"],
                     headers: {
                         "Content-Type": "application/json",
@@ -99,7 +102,7 @@ const AdminDashboard: React.FC = () => {
 
             allUsers.sort((a, b) => b.id - a.id);
 
-            setUsers(allUsers.slice(0, 10));
+            setUsers(allUsers.slice(0, itemsPerPage));
         } catch (error) {
             if (error instanceof Error) setError(error.message);
         } finally {
@@ -109,7 +112,7 @@ const AdminDashboard: React.FC = () => {
 
     useEffect(() => {
         fetchUsers(`${statsAPI}`);
-    }, []);
+    }, [itemsPerPage]);
 
     const handleCreate = (category: string) => {
         navigate("/dashboard/create", {state: {category}});
@@ -149,9 +152,18 @@ const AdminDashboard: React.FC = () => {
 
 
             <h2>Recent Users</h2>
+            <select
+                value={itemsPerPage}
+                onChange={(e) => setItemsPerPage(Number(e.target.value))}
+            >
+                <option value="10">10 per page</option>
+                <option value="20">20 per page</option>
+                <option value="50">50 per page</option>
+                <option value="100">100 per page</option>
+            </select>
 
             <ul className="user-list">
-            {users.map((user) => (
+                {users.map((user) => (
                     <li key={user.id} className="user-item">
                         {user.rol}: {user.prenume} {user.nume} ({user.email})
 

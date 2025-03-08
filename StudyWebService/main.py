@@ -125,7 +125,7 @@ class LectureExamination(Enum):
     COLOCVIU = "colocviu"
     EXAMEN = "examen"
 
-MAX_ITEMS_PER_PAGE = 100
+MAX_ITEMS_PER_PAGE = 1000
 
 
 def ValidateIdentity(token: str):
@@ -445,6 +445,12 @@ def read_teacher_lectures(
         teacher_id: int,
         request: Request,
         authorization: Annotated[str, Header()],
+        coordinator: Union[str, None] = None,
+        name: Union[str, None] = None,
+        year: Union[int, None] = None,
+        type: Union[str, None] = None,
+        category: Union[str, None] = None,
+        examination: Union[str, None] = None,
         page: int = 1,
         items_per_page: int = 10,
 ):
@@ -465,23 +471,37 @@ def read_teacher_lectures(
     except:
         raise HTTPException(status_code=404, detail="Teacher not found")
 
-    teacher_lectures_res = Lecture.select().where(Lecture.id_titular == teacher.id)
+    filters = [Lecture.id_titular == teacher.id]
+    if coordinator:
+        coordinator_id = Teacher.select().where(Teacher.nume.contains(coordinator.strip())).get().id
+        filters.append(Lecture.id_titular == coordinator_id)
+    if name:
+        filters.append(Lecture.nume_disciplina.contains(name.strip()))
+    if year:
+        filters.append(Lecture.an_studiu == year)
+    if type:
+        filters.append(Lecture.tip_disciplina.contains(type.strip()))
+    if category:
+        filters.append(Lecture.categorie_disciplina.contains(category.strip()))
+    if examination:
+        filters.append(Lecture.tip_examinare.contains(examination.strip()))
+
+    teacher_lectures_res = Lecture.select().where(*filters).order_by(Lecture.cod)
 
     total_items = teacher_lectures_res.count()
+    if total_items == 0:
+        raise HTTPException(status_code=404, detail="Teacher isn't coordinating any lecture!")
+
+    total_pages = math.ceil(total_items / items_per_page)
     start_index = (page - 1) * items_per_page
     end_index = start_index + items_per_page
-    total_pages = math.ceil(total_items / items_per_page)
 
     if start_index >= total_items:
         raise HTTPException(status_code=416, detail={"max_page": total_pages,
-                                                      "items_per_page": items_per_page})
+                                                     "items_per_page": items_per_page})
 
     teacher_lectures_res = teacher_lectures_res.limit(items_per_page).offset(start_index)
-
-    teacher_lectures = []
-    for lecture in teacher_lectures_res:
-        lecture_dict = model_to_dict(lecture)
-        teacher_lectures.append(lecture_dict)
+    teacher_lectures = [model_to_dict(lecture) for lecture in teacher_lectures_res]
 
     links = {
         "self": {
@@ -1088,6 +1108,12 @@ def read_student_lectures(
         student_id: int,
         request: Request,
         authorization: Annotated[str, Header()],
+        coordinator: Union[str, None] = None,
+        name: Union[str, None] = None,
+        year: Union[int, None] = None,
+        type: Union[str, None] = None,
+        category: Union[str, None] = None,
+        examination: Union[str, None] = None,
         page: int = 1,
         items_per_page: int = 10,
 ):
@@ -1109,7 +1135,6 @@ def read_student_lectures(
     except:
         raise HTTPException(status_code=404, detail="Student not found")
 
-    student_lectures_res = Student_Disciplina.select().where(Student_Disciplina.StudentID == student.id)
 
     links = {
         "self": {
@@ -1126,46 +1151,62 @@ def read_student_lectures(
         },
     }
 
-    student_lectures = []
-    if student_lectures_res:
-        total_items = student_lectures_res.count()
-        total_pages = math.ceil(total_items / items_per_page)
-        start_index = (page - 1) * items_per_page
-        end_index = start_index + items_per_page
+    filters = [Student_Disciplina.StudentID == student.id]
+    if coordinator:
+        coordinator_id = Teacher.select().where(Teacher.nume.contains(coordinator.strip())).get().id
+        filters.append(Lecture.id_titular == coordinator_id)
+    if name:
+        filters.append(Lecture.nume_disciplina.contains(name.strip()))
+    if year:
+        filters.append(Lecture.an_studiu == year)
+    if type:
+        filters.append(Lecture.tip_disciplina.contains(type.strip()))
+    if category:
+        filters.append(Lecture.categorie_disciplina.contains(category.strip()))
+    if examination:
+        filters.append(Lecture.tip_examinare.contains(examination.strip()))
 
-        if start_index >= total_items:
-            raise HTTPException(status_code=416, detail={"max_page": total_pages,
-                                                          "items_per_page": items_per_page})
+    student_lectures_res = (
+        Lecture.select()
+        .join(Student_Disciplina, on=(Lecture.cod == Student_Disciplina.DisciplinaID))
+        .where(*filters)
+        .order_by(Lecture.cod)
+    )
 
-        student_lectures_res = student_lectures_res.limit(items_per_page).offset(start_index)
+    total_items = student_lectures_res.count()
+    if total_items == 0:
+        raise HTTPException(status_code=404, detail="Student isn't assigned to any lecture!")
 
-        for student_lecture in student_lectures_res:
-            try:
-                lecture = Lecture.select().where(Lecture.cod == student_lecture).get()
-            except:
-                raise HTTPException(status_code=404, detail={"Student lecture not found!"})
-            lecture_dict = model_to_dict(lecture)
-            student_lectures.append(lecture_dict)
+    total_pages = math.ceil(total_items / items_per_page)
+    start_index = (page - 1) * items_per_page
+    end_index = start_index + items_per_page
 
-        if page > 1:
-            links["first_page"] = {
-                "href": f"{request.url.path}?page=1&items_per_page={items_per_page}",
-                "method": "GET"
-            }
-            links["previous_page"] = {
-                "href": f"{request.url.path}?page={page - 1}&items_per_page={items_per_page}",
-                "method": "GET"
-            }
+    if start_index >= total_items:
+        raise HTTPException(status_code=416, detail={"max_page": total_pages,
+                                                      "items_per_page": items_per_page})
 
-        if page < total_pages:
-            links["next_page"] = {
-                "href": f"{request.url.path}?page={page + 1}&items_per_page={items_per_page}",
-                "method": "GET"
-            }
-            links["last_page"] = {
-                "href": f"{request.url.path}?page={total_pages}&items_per_page={items_per_page}",
-                "method": "GET"
-            }
+    student_lectures_res = student_lectures_res.limit(items_per_page).offset(start_index)
+    student_lectures = [model_to_dict(lecture) for lecture in student_lectures_res]
+
+    if page > 1:
+        links["first_page"] = {
+            "href": f"{request.url.path}?page=1&items_per_page={items_per_page}",
+            "method": "GET"
+        }
+        links["previous_page"] = {
+            "href": f"{request.url.path}?page={page - 1}&items_per_page={items_per_page}",
+            "method": "GET"
+        }
+
+    if page < total_pages:
+        links["next_page"] = {
+            "href": f"{request.url.path}?page={page + 1}&items_per_page={items_per_page}",
+            "method": "GET"
+        }
+        links["last_page"] = {
+            "href": f"{request.url.path}?page={total_pages}&items_per_page={items_per_page}",
+            "method": "GET"
+        }
 
     return {
         "lectures": {
@@ -1593,7 +1634,7 @@ def read_lectures(
 def read_lecture(lecture_code: str, request: Request, authorization: Annotated[str, Header()]):
 
     role, user_id = ValidateIdentity(authorization)
-    if role not in ["profesor"]:
+    if role not in ["profesor", "admin"]:
         raise HTTPException(status_code=403, detail="You aren't authorized to access this resource")
 
     try:
@@ -1627,7 +1668,12 @@ def read_lecture(lecture_code: str, request: Request, authorization: Annotated[s
     else:
         raise HTTPException(status_code=response.status_code, detail=f"Failed to get materials for the lecture!")
 
-    if int(lecture["lecture"]["id_titular"]) == int(user_id):
+    if role == "admin":
+        lecture["_links"]["update"] = {
+            "href": request.url.path,
+            "method": "PUT",
+        }
+    elif int(lecture["lecture"]["id_titular"]) == int(user_id):
         lecture["_links"]["update"] = {
             "href": request.url.path,
             "method": "PUT",
@@ -1734,6 +1780,7 @@ def update_lecture(
     else:
         response.status_code = 204
         res = Lecture.update({
+            "cod": lecture_code.strip(),
             "id_titular": coordinator_id,
             "nume_disciplina": lecture_name.strip(),
             "an_studiu": year,

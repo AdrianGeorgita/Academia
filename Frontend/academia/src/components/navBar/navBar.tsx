@@ -72,6 +72,9 @@ const NavBar: React.FC = () => {
                             <button className="navbar-button" onClick={() => navigate("/dashboard/teachers")}>
                                 Teachers
                             </button>
+                            <button className="navbar-button" onClick={() => navigate("/dashboard/lectures")}>
+                                Lectures
+                            </button>
                         </>
                     )}
                 </div>
