@@ -94,12 +94,10 @@ const LecturePage: React.FC = () => {
 
                 setLectureDetails(data);
 
-                if(data.materials?.materials == null)
-                    setNoData(true);
-                else
+                if(data.materials?.materials)
                     setNoData(false);
-
-                console.log(data);
+                else
+                    setNoData(true);
 
                 if(data._links.students) {
                     setStudentsAPI(data._links.students)
@@ -186,11 +184,17 @@ const LecturePage: React.FC = () => {
                     "materiale-laborator": updatedMaterials["materiale-laborator"]
                 };
 
+
                 const apiUrl = noData
                     ? lectureDetails?.materials?._links?.create?.href
                     : lectureDetails?.materials?._links?.update?.href;
 
-                if (!apiUrl) {
+                const method = noData
+                    ? lectureDetails?.materials?._links?.create?.method
+                    : lectureDetails?.materials?._links?.update?.method;
+
+
+                if (!apiUrl || !method) {
                     setFileUploadError('No API link available');
                     return;
                 }
@@ -198,7 +202,7 @@ const LecturePage: React.FC = () => {
                 try {
                     const token = localStorage.getItem('authToken');
                     const response = await fetch(`${materialsHost}${apiUrl}`, {
-                        method: 'PUT',
+                        method: method,
                         headers: {
                             'Authorization': `Bearer ${token}`,
                             'Content-Type': 'application/json',
