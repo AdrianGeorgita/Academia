@@ -46,21 +46,26 @@ The application consists of three RESTful web services:
 	- Can create new user accounts (professor or student).
 	- Manages users and their course associations.
 	- Cannot access other stored application data.
-- ![ezgif com-resize (4)](https://github.com/user-attachments/assets/0ded8ca9-3de6-444d-ab91-8c81d5ed5079) ![ezgif com-resize (5)](https://github.com/user-attachments/assets/b9a68d2c-9796-4212-ab87-2e0b660678ac)
+- ![2025-06-1323-12-32-ezgif com-optimize](https://github.com/user-attachments/assets/bca14a5f-142b-4568-be22-8052fbf7bf38) ![ezgif com-optimize (2)](https://github.com/user-attachments/assets/cfac817f-9a70-48cd-bd49-b3e844d37abc)
+
 
 
 2. Teacher
 	- Can view information about students enrolled in their courses.
 	- Can manage their assigned disciplines.
 	- Can view other courses without making modifications.
-- ![ezgif com-resize (6)](https://github.com/user-attachments/assets/8c22db8f-55b6-4e9d-8499-c11d86381fc5)
+- ![ezgif com-optimize (3)](https://github.com/user-attachments/assets/03e486e7-7dfb-41f5-abb7-14e87c4e186e)
+
+
 
 
 3. Student
 	- Can manage personal information.
 	- Can view details of enrolled courses only.
 
-- ![ezgif com-resize (2)](https://github.com/user-attachments/assets/8afd0799-346e-4fb1-8aa2-00ae0e55def0)
+- ![ezgif com-optimize (4)](https://github.com/user-attachments/assets/bad9ada2-c0f0-47c5-b563-6efb4865b8fc)
+
+
 
 
 ## Technologies Used
