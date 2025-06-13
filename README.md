@@ -3,7 +3,8 @@
 ## Project Overview
 This project is a Moodle-like web application designed for a single faculty, where study materials and course-related data are efficiently managed through encapsulated web services. The primary objective is to facilitate student access to course materials while ensuring proper authentication and authorization.
 
-![image](https://github.com/user-attachments/assets/adce0198-4d58-4eaa-9636-c34262929326)
+![dashboard](https://github.com/user-attachments/assets/e9c6912a-dc02-4fbc-a959-1abc52a1695d)
+
 
 
 ## Features & Requirements
