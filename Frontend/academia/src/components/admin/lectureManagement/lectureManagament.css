@@ -1,28 +1,159 @@
 .lecture-management-container {
-    max-width: 100%;
-    margin: 50px auto;
-    padding: 20px;
-    background-color: #f9f9f9;
-    border-radius: 8px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-    text-align: left;
+    max-width: 800px;
+    margin: 2rem auto;
+    padding: 2rem;
+    background-color: #ffffff;
+    border-radius: 16px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+}
+
+.profile-title {
+    text-align: center;
+    color: #2c3e50;
+    font-size: 2rem;
+    font-weight: 600;
+    margin-bottom: 2rem;
 }
 
 .lecture-management-details {
-    text-align: left;
-    margin-bottom: 30px;
+    display: grid;
+    gap: 1.5rem;
+    max-width: 600px;
+    margin: 0 auto;
 }
 
 .lecture-management-label {
     display: flex;
     flex-direction: column;
-    font-size: 16px;
-    margin-bottom: 15px;
-    color: #555;
+    gap: 0.5rem;
 }
 
 .lecture-management-label strong {
-    margin-bottom: 5px;
+    color: #2c3e50;
+    font-size: 0.95rem;
+    font-weight: 600;
+}
+
+.editable-input {
+    padding: 0.75rem 1rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    color: #4a5568;
+    background-color: #f8fafc;
+    transition: all 0.2s ease;
+}
+
+.editable-input:hover {
+    border-color: #cbd5e0;
+}
+
+.editable-input:focus {
+    outline: none;
+    border-color: #4299e1;
+    box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.1);
+    background-color: #ffffff;
+}
+
+.edit-lecture-button-group {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    margin-top: 2.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid #e2e8f0;
+}
+
+.edit-lecture-button-group .edit-lecture-update-button,
+.edit-lecture-button-group .edit-lecture-back-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    height: 40px;
+    line-height: 1;
+}
+
+.edit-lecture-button-group .update-button svg,
+.edit-lecture-button-group .edit-lecture-back-button svg {
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+}
+
+.edit-lecture-button-group .edit-lecture-update-button {
+    background-color: #4299e1;
+    color: white;
+    border: none;
+}
+
+.edit-lecture-button-group .edit-lecture-update-button:hover {
+    background-color: #3182ce;
+    transform: translateY(-1px);
+}
+
+.edit-lecture-button-group .edit-lecture-back-button {
+    background-color: #f7fafc;
+    color: #4a5568;
+    border: 1px solid #e2e8f0;
+}
+
+.edit-lecture-button-group .edit-lecture-back-button:hover {
+    background-color: #edf2f7;
+    transform: translateY(-1px);
+}
+
+select.editable-input {
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%234a5568'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    background-size: 1.25rem;
+    padding-right: 2.5rem;
+}
+
+.lecture-management-error {
+    color: #e53e3e;
+    font-size: 0.95rem;
+    margin: 0.75rem auto;
+    padding: 0.75rem 1rem;
+    background-color: #fff5f5;
+    border-radius: 6px;
+    border: 1px solid #feb2b2;
+    max-width: 600px;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.lecture-management-error::before {
+    content: '';
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23e53e3e' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'%3E%3C/circle%3E%3Cline x1='12' y1='8' x2='12' y2='12'%3E%3C/line%3E%3Cline x1='12' y1='16' x2='12.01' y2='16'%3E%3C/line%3E%3C/svg%3E");
+    background-size: contain;
+    background-repeat: no-repeat;
+    flex-shrink: 0;
+}
+
+@media (max-width: 768px) {
+    .lecture-management-container {
+        margin: 1rem;
+        padding: 1.5rem;
+    }
+
+    .lecture-management-error {
+        margin: 0.5rem 0;
+        padding: 0.5rem 0.75rem;
+    }
 }
 
 

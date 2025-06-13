@@ -78,7 +78,6 @@ const CreatePage = () => {
 
     const handleSubmit = async () => {
         try {
-
             const token = localStorage.getItem('authToken');
             if (!token) navigate('/login');
 
@@ -90,10 +89,9 @@ const CreatePage = () => {
             const code_regex = new RegExp(`^TI\\.D[SDOL]\\.${year}\\d{2}$`);
 
             if(entityType === "lecture" && !code_regex.test(formData["code"])) {
-                alert("Invalid Code Format!")
+                setError("Invalid Code Format! The code should follow the pattern: TI.D[SDOL].[year][number]");
                 return;
             }
-
 
             const response = await fetch(`${HOST_URL}${api?.href}`, {
                 method: api?.method,
@@ -122,7 +120,7 @@ const CreatePage = () => {
             <div className="create-entity-container">
                 <h1 className="profile-title">Create {entityType.charAt(0).toUpperCase() + entityType.slice(1)}</h1>
 
-                <div className="profile-details">
+                <div className="create-entity-profile-details">
                     {/*<label className="profile-label">*/}
                     {/*    <strong>Entity Type:</strong>*/}
                     {/*    <select value={entityType} onChange={(e) => setEntityType(e.target.value as any)} className="editable-input">*/}
@@ -297,12 +295,22 @@ const CreatePage = () => {
                     )}
                 </div>
 
-                <div className="button-group">
-                    <button className="back-button" onClick={() => navigate('/dashboard')}>Back to Dashboard</button>
-                    <button className="update-button" onClick={handleSubmit}>Create {entityType}</button>
+                <div className="create-entity-button-group">
+                    <button className="create-entity-back-button" onClick={() => navigate('/dashboard')}>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M19 12H5M12 19l-7-7 7-7"/>
+                        </svg>
+                        Back to Dashboard
+                    </button>
+                    <button className="create-entity-update-button" onClick={handleSubmit}>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M12 5v14M5 12h14"/>
+                        </svg>
+                        Create {entityType}
+                    </button>
                 </div>
 
-                {error && <p className="error">Error: {error}</p>}
+                {error && <p className="create-entity-error">{error}</p>}
             </div>
         </div>
     );

@@ -1,197 +1,456 @@
 .lecture-page-container {
-    padding: 20px;
-    max-width: 100%;
-    margin: 0 auto;
-    font-family: 'Roboto', sans-serif;
+    min-height: 100vh;
+    width: 100%;
+    background: linear-gradient(135deg, #f6f9fc 0%, #eef2f7 100%);
+    padding: 0;
+    margin: 0;
 }
 
 .button-group {
     display: flex;
-    gap: 15px;
-    margin-bottom: 30px;
+    gap: 1rem;
+    margin: 2rem 2rem 1rem 2rem;
 }
 
 .back-button,
 .enrolled-students-button {
-    background-color: #007BFF;
+    background-color: #4a90e2;
     color: white;
-    padding: 12px 25px;
     border: none;
-    border-radius: 5px;
-    font-size: 1.1rem;
+    padding: 0.8rem 1.5rem;
+    border-radius: 6px;
     cursor: pointer;
-    transition: background-color 0.3s ease, transform 0.2s ease;
+    font-size: 1rem;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
 }
 
 .back-button:hover,
 .enrolled-students-button:hover {
-    background-color: #0056b3;
+    background-color: #2c5282;
     transform: translateY(-2px);
-}
-
-.back-button:focus,
-.enrolled-students-button:focus {
-    outline: none;
-}
-
-.lecture-page-container h1 {
-    font-size: 2.2rem;
-    margin-bottom: 15px;
-    color: #333;
-}
-
-.lecture-page-container h3 {
-    font-size: 1.6rem;
-    margin-top: 20px;
-    margin-bottom: 10px;
-    color: #444;
-}
-
-.lecture-details p {
-    font-size: 1rem;
-    line-height: 1.6;
-    margin-bottom: 10px;
-    color: #555;
-}
-
-.lecture-details strong {
-    font-weight: bold;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
 .section-container {
-    border: 1px solid #ddd;
-    margin-bottom: 25px;
-    padding: 25px;
-    border-radius: 8px;
-    background-color: #fafafa;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    background: #ffffff;
+    padding: 2rem;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    margin: 0 2rem 2rem 2rem;
+    position: relative;
+}
+
+.section-container::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(to right, #4a90e2, #2c5282);
+    border-radius: 12px 12px 0 0;
+}
+
+.section-container h1 {
+    font-size: 2.5rem;
+    color: #2c5282;
+    margin-bottom: 1.5rem;
+    font-weight: 600;
+    position: relative;
+    padding-bottom: 0.5rem;
+}
+
+.section-container h1::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 60px;
+    height: 4px;
+    background: linear-gradient(90deg, #4a90e2, #2c5282);
+    border-radius: 2px;
+}
+
+.section-container h3 {
+    font-size: 1.75rem;
+    color: #2c5282;
+    margin-bottom: 1.5rem;
+    font-weight: 600;
+}
+
+.lecture-details p {
+    font-size: 1.1rem;
+    line-height: 1.6;
+    margin-bottom: 1rem;
+    color: #4a5568;
+}
+
+.lecture-details strong {
+    color: #2c5282;
+    font-weight: 600;
 }
 
 .evaluation-list {
     list-style-type: none;
     padding: 0;
+    max-width: 600px;
 }
 
 .evaluation-list li {
-    margin-bottom: 15px;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.evaluation-list li strong {
+    min-width: 180px;
+    color: #2c5282;
+    font-weight: 600;
 }
 
 .evaluation-list input {
-    padding: 8px;
+    padding: 0.8rem 1rem;
+    border: 2px solid #e2e8f0;
+    border-radius: 6px;
     font-size: 1rem;
-    border-radius: 4px;
-    border: 1px solid #ccc;
+    outline: none;
+    transition: all 0.3s ease;
+    background-color: #f8fafc;
     width: 150px;
+    color: #2c5282;
+    text-align: right;
+}
+
+.evaluation-list input::-webkit-outer-spin-button,
+.evaluation-list input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.evaluation-list input:focus {
+    border-color: #4a90e2;
+    box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.1);
 }
 
 .update-button {
-    background-color: #28a745;
+    background-color: #4a90e2;
     color: white;
-    padding: 12px 20px;
     border: none;
-    border-radius: 5px;
-    font-size: 1.1rem;
+    padding: 0.8rem 1.5rem;
+    border-radius: 6px;
     cursor: pointer;
-    margin-top: 20px;
-    transition: background-color 0.3s ease, transform 0.2s ease;
+    font-size: 1rem;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    margin-top: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
 }
 
 .update-button:hover {
-    background-color: #218838;
+    background-color: #2c5282;
     transform: translateY(-2px);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.materials-container {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
 }
 
 .materials-list {
     list-style-type: none;
     padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
 }
 
-.materials-list li {
-    margin-bottom: 15px;
-    padding-bottom: 10px;
-    border-bottom: 1px solid #eee;
+.material-item {
+    background-color: #ffffff;
+    padding: 1.2rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: all 0.3s ease;
+    border-left: 4px solid #4a90e2;
 }
 
-.materials-list button {
-    padding: 8px 15px;
-    margin-right: 10px;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
+.material-item:hover {
+    transform: translateX(5px);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    border-left-color: #2c5282;
 }
 
-.download-btn {
-    background-color: #007BFF;
+.material-info {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.file-icon {
+    color: #4a90e2;
+    flex-shrink: 0;
+}
+
+.file-name {
+    font-size: 1.1rem;
+    color: #2c5282;
+    font-weight: 500;
+}
+
+.material-actions {
+    display: flex;
+    gap: 1rem;
+}
+
+.download-btn,
+.delete-btn {
+    background-color: #4a90e2;
     color: white;
+    border: none;
+    padding: 0.6rem 1.2rem;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.95rem;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
 }
 
 .download-btn:hover {
-    background-color: #0056b3;
+    background-color: #2c5282;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
 .delete-btn {
-    background-color: #dc3545;
-    color: white;
+    background-color: #e53e3e;
 }
 
 .delete-btn:hover {
-    background-color: #c82333;
+    background-color: #c53030;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.no-materials {
+    text-align: center;
+    padding: 2rem;
+    background-color: #f8fafc;
+    border-radius: 8px;
+    color: #718096;
+    font-style: italic;
+}
+
+.upload-section {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    padding: 1.5rem;
+    background-color: #f8fafc;
+    border-radius: 8px;
+    border: 2px dashed #e2e8f0;
+}
+
+.file-input-container {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.file-input {
+    display: none;
+}
+
+.file-input-label {
+    background-color: #4a90e2;
+    color: white;
+    padding: 0.8rem 1.5rem;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.file-input-label:hover {
+    background-color: #2c5282;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.selected-file {
+    color: #4a5568;
+    font-size: 0.95rem;
+    flex-grow: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .upload-btn {
-    background-color: #17a2b8;
+    background-color: #4a90e2;
     color: white;
-    padding: 12px 20px;
     border: none;
-    border-radius: 5px;
-    font-size: 1.1rem;
-    margin-top: 10px;
-    transition: background-color 0.3s ease, transform 0.2s ease;
+    padding: 0.8rem 1.5rem;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    width: 100%;
 }
 
 .upload-btn:hover {
-    background-color: #138496;
+    background-color: #2c5282;
     transform: translateY(-2px);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
 input[type="file"] {
-    margin-top: 15px;
+    margin-top: 1rem;
+    padding: 0.8rem;
+    border: 2px solid #e2e8f0;
+    border-radius: 6px;
+    background-color: #f8fafc;
+    color: #2c5282;
+    width: 100%;
+    max-width: 400px;
 }
 
 .error {
-    font-size: 1.1rem;
-    color: #ff0000;
-    font-weight: bold;
+    font-size: 1.2rem;
+    color: #e53e3e;
     text-align: center;
-    margin-top: 20px;
+    padding: 2rem;
+    background-color: #fff5f5;
+    border-radius: 8px;
+    margin: 2rem;
+}
+
+.loading {
+    font-size: 1.2rem;
+    color: #2c5282;
+    text-align: center;
+    padding: 2rem;
+    background-color: #ebf8ff;
+    border-radius: 8px;
+    margin: 2rem;
+}
+
+.evaluation-note {
+    background-color: #ebf8ff;
+    color: #2c5282;
+    padding: 1rem;
+    border-radius: 6px;
+    margin-bottom: 1.5rem;
+    font-size: 0.95rem;
+    border-left: 4px solid #4a90e2;
+}
+
+.evaluation-input-group {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.percentage {
+    color: #4a5568;
+    font-size: 0.95rem;
+    min-width: 60px;
+}
+
+.total-evaluation {
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+    border-top: 2px solid #e2e8f0;
+}
+
+.total-percentage {
+    color: #2c5282;
+    font-weight: 600;
+    font-size: 1.1rem;
 }
 
 @media (max-width: 768px) {
     .lecture-page-container {
-        padding: 15px;
+        padding: 0;
     }
 
-    .lecture-page-container h1 {
-        font-size: 1.8rem;
+    .button-group {
+        margin: 1rem;
+        flex-direction: column;
     }
 
-    .lecture-page-container h3 {
-        font-size: 1.4rem;
+    .section-container {
+        margin: 1rem;
+        padding: 1.5rem;
+    }
+
+    .section-container h1 {
+        font-size: 2rem;
+    }
+
+    .section-container h3 {
+        font-size: 1.5rem;
     }
 
     .lecture-details p {
-        font-size: 0.95rem;
+        font-size: 1rem;
+    }
+
+    .material-item {
+        flex-direction: column;
+        gap: 1rem;
+        text-align: center;
+        border-left: none;
+        border-top: 4px solid #4a90e2;
+    }
+
+    .material-item:hover {
+        border-left-color: transparent;
+        border-top-color: #2c5282;
+    }
+
+    .material-info {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .material-actions {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .file-input-container {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .selected-file {
+        text-align: center;
     }
 
     .evaluation-list input {
         width: 120px;
-    }
-
-    .section-container {
-        padding: 15px;
-    }
-
-    .update-button, .upload-btn {
-        padding: 10px 18px;
     }
 }

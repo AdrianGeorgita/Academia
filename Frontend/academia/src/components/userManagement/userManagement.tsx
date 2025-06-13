@@ -97,6 +97,8 @@ const UserManagementPage: React.FC<UsersListProps> = ({ category }) => {
                 const data = await response.json();
                 setProfile(data.student || data.teacher);
 
+                console.log(data);
+
                 if(data.student) {
                     const getLecturesApi = data.student["_links"]["lectures"];
                     const lectures_response = await fetch(`${HOST_URL}${getLecturesApi.href}`, {
@@ -254,7 +256,7 @@ const UserManagementPage: React.FC<UsersListProps> = ({ category }) => {
 
         } catch (error) {
             if (error instanceof Error) {
-                alert('Error assigning lecture: ' + error.message);
+                setError(error.message);
             }
         }
     };
@@ -301,14 +303,14 @@ const UserManagementPage: React.FC<UsersListProps> = ({ category }) => {
     return (
         <div>
             <NavBar />
-            <div className="profile-page-container">
+            <div className="edit-profile-page-container">
                 <h1 className="profile-title">Admin Profile Management</h1>
 
                 <div className="two-column-layout">
                     {/* Left Column - Profile Information */}
                     <div className="profile-column">
                         <h2>Profile Information</h2>
-                        <div className="profile-details">
+                        <div className="edit-profile-details">
                             <label className="profile-label">
                                 <strong>First Name:</strong>
                                 <input
@@ -418,9 +420,19 @@ const UserManagementPage: React.FC<UsersListProps> = ({ category }) => {
                                 </>
                             )}
                         </div>
-                        <div className="button-group">
-                            <button className="update-button" onClick={handleUpdate}>Update Profile</button>
-                            <button className="delete-button" onClick={handleDelete}>Delete User</button>
+                        <div className="edit-profile-button-group">
+                            <button className="edit-update-button" onClick={handleUpdate}>
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" strokeLinecap="round" strokeLinejoin="round"/>
+                                </svg>
+                                Update Profile
+                            </button>
+                            <button className="edit-delete-button" onClick={handleDelete}>
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" strokeLinecap="round" strokeLinejoin="round"/>
+                                </svg>
+                                Delete Profile
+                            </button>
                         </div>
                     </div>
 
@@ -428,41 +440,39 @@ const UserManagementPage: React.FC<UsersListProps> = ({ category }) => {
                         <div className="lectures-column">
                             <h2>Lecture Management</h2>
                             <div className="lectures-management">
-                            <label className="profile-label">
-                                    <strong>Student's Lectures:</strong>
-                                    <input
-                                        name="lectures"
-                                        id="lectures"
-                                        list="lectures-list"
-                                        className="editable-input"
-                                        value={selectedStudentLecture}
-                                        onChange={(e) => setSelectedStudentLecture(e.target.value)}
-                                        placeholder="Select a lecture"
-                                    />
-                                    <datalist id="lectures-list">
+                                <h3>Student's Lectures</h3>
+                                {studentLectures.length === 0 ? (
+                                    <div className="no-lectures-message">
+                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                        </svg>
+                                        No lectures assigned
+                                    </div>
+                                ) : (
+                                    <div className="user-management-lectures-list">
                                         {studentLectures.map((lecture) => (
-                                            <option key={lecture.cod}
-                                                    value={`${lecture.cod} - ${lecture.nume_disciplina}`}/>
+                                            <div key={lecture.cod} className="user-management-lecture-item">
+                                                <span>{lecture.cod} - {lecture.nume_disciplina}</span>
+                                                <button
+                                                    className="userManagement-unassign-button"
+                                                    onClick={() => unassignLecture(lecture.cod)}
+                                                >
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                        <path d="M3 6h18"></path>
+                                                        <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+                                                        <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+                                                    </svg>
+                                                    Unassign
+                                                </button>
+                                            </div>
                                         ))}
-                                    </datalist>
-                                </label>
-
-                                <div className="button-group lecture-buttons">
-                                    <button
-                                        className="unassign-button"
-                                        disabled={!selectedStudentLecture}
-                                        onClick={() => unassignLecture(selectedStudentLecture.split(" - ")[0])}
-                                    >
-                                        Unassign Lecture
-                                    </button>
-                                </div>
-
-                                {studentLectures.length === 0 && (
-                                    <p className="no-lectures-message">No lectures assigned to this student.</p>
+                                    </div>
                                 )}
+                            </div>
 
+                            <div className="lectures-management">
+                                <h3>Available Lectures</h3>
                                 <label className="profile-label">
-                                    <strong>Available Lectures:</strong>
                                     <input
                                         name="all-lectures"
                                         id="all-lectures"
@@ -482,18 +492,17 @@ const UserManagementPage: React.FC<UsersListProps> = ({ category }) => {
 
                                 <div className="button-group lecture-buttons">
                                     <button
-                                        className="assign-button"
+                                        className="userManagement-assign-button"
+                                        onClick={() => assignLecture(selectedLecture.split(' - ')[0])}
                                         disabled={!selectedLecture}
-                                        onClick={() => assignLecture(selectedLecture.split(" - ")[0])}
                                     >
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                            <path d="M12 5v14"></path>
+                                            <path d="M5 12h14"></path>
+                                        </svg>
                                         Assign Lecture
                                     </button>
                                 </div>
-
-                                {allLectures.length === 0 && (
-                                    <p className="no-lectures-message">No lectures available.</p>
-                                )}
-
                             </div>
                         </div>
                     )}

@@ -372,6 +372,10 @@ const LecturePage: React.FC = () => {
         document.body.removeChild(a);
     };
 
+    const capitalizeFirstLetter = (str: string) => {
+        return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+    };
+
     if (loading) {
         return <div className="loading">Loading...</div>;
     }
@@ -410,38 +414,58 @@ const LecturePage: React.FC = () => {
                     <h1>{lectureDetails.lecture.nume_disciplina}</h1>
                     <p><strong>Code:</strong> {lectureDetails.lecture.cod}</p>
                     <p><strong>Year of Study:</strong> {lectureDetails.lecture.an_studiu}</p>
-                    <p><strong>Subject Type:</strong> {lectureDetails.lecture.tip_disciplina}</p>
-                    <p><strong>Category:</strong> {lectureDetails.lecture.categorie_disciplina}</p>
-                    <p><strong>Examination Type:</strong> {lectureDetails.lecture.tip_examinare}</p>
+                    <p><strong>Subject Type:</strong> {capitalizeFirstLetter(lectureDetails.lecture.tip_disciplina)}</p>
+                    <p><strong>Category:</strong> {capitalizeFirstLetter(lectureDetails.lecture.categorie_disciplina)}</p>
+                    <p><strong>Examination Type:</strong> {capitalizeFirstLetter(lectureDetails.lecture.tip_examinare)}</p>
                 </div>
 
                 <div className="section-container">
                     <h3>Evaluation</h3>
+                    {lectureDetails?.materials?._links?.update && (
+                        <div className="evaluation-note">
+                            Note: The evaluation weights must add up to 100%
+                        </div>
+                    )}
                     <ul className="evaluation-list">
                         <li>
                             <strong>Final Examination:</strong>
                             {lectureDetails?.materials?._links?.update ? (
-                                <input type="number" value={finalExam} onChange={handleFinalExamChange} step="0.1"/>
+                                <div className="evaluation-input-group">
+                                    <input type="number" value={finalExam} onChange={handleFinalExamChange} step="0.1"/>
+                                    <span className="percentage">({(finalExam * 100).toFixed(0)}%)</span>
+                                </div>
                             ) : (
-                                <span> {finalExam}</span>
+                                <span> {(finalExam * 100).toFixed(0)}%</span>
                             )}
                         </li>
                         <li>
                             <strong>Laboratory Activity:</strong>
                             {lectureDetails?.materials?._links?.update ? (
-                                <input type="number" value={labActivity} onChange={handleLabActivityChange} step="0.1"/>
+                                <div className="evaluation-input-group">
+                                    <input type="number" value={labActivity} onChange={handleLabActivityChange} step="0.1"/>
+                                    <span className="percentage">({(labActivity * 100).toFixed(0)}%)</span>
+                                </div>
                             ) : (
-                                <span> {labActivity}</span>
+                                <span> {(labActivity * 100).toFixed(0)}%</span>
                             )}
                         </li>
                         <li>
                             <strong>Project:</strong>
                             {lectureDetails?.materials?._links?.update ? (
-                                <input type="number" value={project} onChange={handleProjectChange} step="0.1"/>
+                                <div className="evaluation-input-group">
+                                    <input type="number" value={project} onChange={handleProjectChange} step="0.1"/>
+                                    <span className="percentage">({(project * 100).toFixed(0)}%)</span>
+                                </div>
                             ) : (
-                                <span> {project}</span>
+                                <span> {(project * 100).toFixed(0)}%</span>
                             )}
                         </li>
+                        {lectureDetails?.materials?._links?.update && (
+                            <li className="total-evaluation">
+                                <strong>Total:</strong>
+                                <span className="total-percentage">({((finalExam + labActivity + project) * 100).toFixed(0)}%)</span>
+                            </li>
+                        )}
                     </ul>
                     {lectureDetails?.materials?._links?.update && (
                         <button className="update-button" onClick={() => handleUpload('evaluation')}>Update</button>
@@ -450,59 +474,150 @@ const LecturePage: React.FC = () => {
 
                 <div className="section-container">
                     <h3>Course Materials</h3>
-                    <ul className="materials-list">
-                        {materials["materiale-curs"] && materials["materiale-curs"].length > 0 ? (
-                            materials["materiale-curs"].map((material, index) => (
-                                <li key={index}>
-                                    <p><strong>File Name:</strong></p>
-                                    <button className="download-btn"
-                                            onClick={() => handleDownloadPDF(material.content, material["nume-fisier"])}>{material["nume-fisier"]}</button>
-                                    {lectureDetails?.materials?._links?.update && (
-                                        <button className="delete-btn"
-                                                onClick={() => handleDeleteMaterial('course', material["nume-fisier"])}>Delete</button>
-                                    )}
-                                </li>
-                            ))
-                        ) : (
-                            <li>No course materials available.</li>
+                    <div className="materials-container">
+                        <ul className="materials-list">
+                            {materials["materiale-curs"] && materials["materiale-curs"].length > 0 ? (
+                                materials["materiale-curs"].map((material, index) => (
+                                    <li key={index} className="material-item">
+                                        <div className="material-info">
+                                            <svg className="file-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                                <polyline points="14 2 14 8 20 8"></polyline>
+                                                <line x1="16" y1="13" x2="8" y2="13"></line>
+                                                <line x1="16" y1="17" x2="8" y2="17"></line>
+                                                <polyline points="10 9 9 9 8 9"></polyline>
+                                            </svg>
+                                            <span className="file-name">{material["nume-fisier"]}</span>
+                                        </div>
+                                        <div className="material-actions">
+                                            <button className="download-btn"
+                                                    onClick={() => handleDownloadPDF(material.content, material["nume-fisier"])}>
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                                    <polyline points="7 10 12 15 17 10"></polyline>
+                                                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                                                </svg>
+                                                Download
+                                            </button>
+                                            {lectureDetails?.materials?._links?.update && (
+                                                <button className="delete-btn"
+                                                        onClick={() => handleDeleteMaterial('course', material["nume-fisier"])}>
+                                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                        <polyline points="3 6 5 6 21 6"></polyline>
+                                                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                                                    </svg>
+                                                    Delete
+                                                </button>
+                                            )}
+                                        </div>
+                                    </li>
+                                ))
+                            ) : (
+                                <li className="no-materials">No course materials available.</li>
+                            )}
+                        </ul>
+                        {lectureDetails?.materials?._links?.update && (
+                            <div className="upload-section">
+                                <div className="file-input-container">
+                                    <input type="file" 
+                                           id="course-file" 
+                                           onChange={handleCourseFileChange}
+                                           className="file-input" />
+                                    <label htmlFor="course-file" className="file-input-label">
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                            <polyline points="17 8 12 3 7 8"></polyline>
+                                            <line x1="12" y1="3" x2="12" y2="15"></line>
+                                        </svg>
+                                        Choose File
+                                    </label>
+                                    <span className="selected-file">{selectedCourseFile ? selectedCourseFile.name : 'No file chosen'}</span>
+                                </div>
+                                <button className="upload-btn" onClick={() => handleUpload('course')}>
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                        <polyline points="17 8 12 3 7 8"></polyline>
+                                        <line x1="12" y1="3" x2="12" y2="15"></line>
+                                    </svg>
+                                    Upload Material
+                                </button>
+                            </div>
                         )}
-                    </ul>
-                    {lectureDetails?.materials?._links?.update && (
-                        <>
-                            <input type="file" onChange={handleCourseFileChange}/>
-                            <button className="upload-btn" onClick={() => handleUpload('course')}>Upload Course
-                                Material
-                            </button>
-                        </>
-                    )}
+                    </div>
                 </div>
 
                 <div className="section-container">
                     <h3>Laboratory Materials</h3>
-                    <ul className="materials-list">
-                        {materials["materiale-laborator"] && materials["materiale-laborator"].length > 0 ? (
-                            materials["materiale-laborator"].map((material, index) => (
-                                <li key={index}>
-                                    <p><strong>File Name:</strong></p>
-                                    <button className="download-btn"
-                                            onClick={() => handleDownloadPDF(material.content, material["nume-fisier"])}>{material["nume-fisier"]}</button>
-                                    {lectureDetails?.materials?._links?.update && (
-                                        <button className="delete-btn"
-                                                onClick={() => handleDeleteMaterial('lab', material["nume-fisier"])}>Delete</button>
-                                    )}
-                                </li>
-                            ))
-                        ) : (
-                            <li>No laboratory materials available.</li>
+                    <div className="materials-container">
+                        <ul className="materials-list">
+                            {materials["materiale-laborator"] && materials["materiale-laborator"].length > 0 ? (
+                                materials["materiale-laborator"].map((material, index) => (
+                                    <li key={index} className="material-item">
+                                        <div className="material-info">
+                                            <svg className="file-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                                <polyline points="14 2 14 8 20 8"></polyline>
+                                                <line x1="16" y1="13" x2="8" y2="13"></line>
+                                                <line x1="16" y1="17" x2="8" y2="17"></line>
+                                                <polyline points="10 9 9 9 8 9"></polyline>
+                                            </svg>
+                                            <span className="file-name">{material["nume-fisier"]}</span>
+                                        </div>
+                                        <div className="material-actions">
+                                            <button className="download-btn"
+                                                    onClick={() => handleDownloadPDF(material.content, material["nume-fisier"])}>
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                                    <polyline points="7 10 12 15 17 10"></polyline>
+                                                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                                                </svg>
+                                                Download
+                                            </button>
+                                            {lectureDetails?.materials?._links?.update && (
+                                                <button className="delete-btn"
+                                                        onClick={() => handleDeleteMaterial('lab', material["nume-fisier"])}>
+                                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                        <polyline points="3 6 5 6 21 6"></polyline>
+                                                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                                                    </svg>
+                                                    Delete
+                                                </button>
+                                            )}
+                                        </div>
+                                    </li>
+                                ))
+                            ) : (
+                                <li className="no-materials">No laboratory materials available.</li>
+                            )}
+                        </ul>
+                        {lectureDetails?.materials?._links?.update && (
+                            <div className="upload-section">
+                                <div className="file-input-container">
+                                    <input type="file" 
+                                           id="lab-file" 
+                                           onChange={handleLabFileChange}
+                                           className="file-input" />
+                                    <label htmlFor="lab-file" className="file-input-label">
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                            <polyline points="17 8 12 3 7 8"></polyline>
+                                            <line x1="12" y1="3" x2="12" y2="15"></line>
+                                        </svg>
+                                        Choose File
+                                    </label>
+                                    <span className="selected-file">{selectedLabFile ? selectedLabFile.name : 'No file chosen'}</span>
+                                </div>
+                                <button className="upload-btn" onClick={() => handleUpload('lab')}>
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                        <polyline points="17 8 12 3 7 8"></polyline>
+                                        <line x1="12" y1="3" x2="12" y2="15"></line>
+                                    </svg>
+                                    Upload Material
+                                </button>
+                            </div>
                         )}
-                    </ul>
-                    {lectureDetails?.materials?._links?.update && (
-                        <>
-                            <input type="file" onChange={handleLabFileChange}/>
-                            <button className="upload-btn" onClick={() => handleUpload('lab')}>Upload Lab Material
-                            </button>
-                        </>
-                    )}
+                    </div>
                 </div>
 
                 {fileUploadError && <div className="error">{fileUploadError}</div>}

@@ -28,6 +28,7 @@ const Login: React.FC = () => {
     const [email, setEmail] = useState<string>('');
     const [password, setPassword] = useState<string>('');
     const [error, setError] = useState<string>('');
+    const [showPassword, setShowPassword] = useState<boolean>(false);
     const navigate = useNavigate();
 
     const loginAPI = "http://localhost:8008/api/academia/login"
@@ -94,27 +95,68 @@ const Login: React.FC = () => {
         await fetchToken();
     };
 
+    const handleKeyPress = (event: React.KeyboardEvent) => {
+        if (event.key === 'Enter') {
+            handleLogin();
+        }
+    };
+
     return (
         <div className="login-container">
-            <h1 className="login-title">Login</h1>
-            <input
-                type="text"
-                className="login-input"
-                placeholder="Enter your email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-            />
-            <input
-                type="password"
-                className="login-input"
-                placeholder="Enter your password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-            />
-            {error && <div className="login-error">{error}</div>}
-            <button className="login-button" onClick={handleLogin}>
-                Login
-            </button>
+            <div className="login-card">
+                <h1 className="login-title">Welcome Back</h1>
+                <p className="login-subtitle">Please enter your credentials to login</p>
+                
+                <div className="input-group">
+                    <div className="input-icon">
+                        <img src="/mail_icon.svg" alt="Email" className="icon" />
+                    </div>
+                    <input
+                        type="text"
+                        className="login-input"
+                        placeholder="Enter your email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        onKeyPress={handleKeyPress}
+                    />
+                </div>
+
+                <div className="input-group">
+                    <div className="input-icon">
+                        <img src="/lock_icon.svg" alt="Password" className="icon" />
+                    </div>
+                    <input
+                        type={showPassword ? "text" : "password"}
+                        className="login-input"
+                        placeholder="Enter your password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        onKeyPress={handleKeyPress}
+                    />
+                    <button 
+                        className="password-toggle"
+                        onClick={() => setShowPassword(!showPassword)}
+                        type="button"
+                    >
+                        <img 
+                            src={showPassword ? "/visibility_hidden.svg" : "/visibility_visible.svg"} 
+                            alt={showPassword ? "Hide password" : "Show password"} 
+                            className="icon"
+                        />
+                    </button>
+                </div>
+
+                {error && (
+                    <div className="login-error">
+                        <span className="error-icon">!</span>
+                        {error}
+                    </div>
+                )}
+
+                <button className="login-button" onClick={handleLogin}>
+                    Sign In
+                </button>
+            </div>
         </div>
     );
 };

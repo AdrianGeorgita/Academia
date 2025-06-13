@@ -1,70 +1,194 @@
 .profile-page-container {
-    max-width: 100%;
-    margin: 50px auto;
-    padding: 20px;
-    background-color: #f9f9f9;
-    border-radius: 8px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-    text-align: left;
+    height: calc(100vh - 64px); /* 64px is typical navbar height */
+    width: 100%;
+    background: linear-gradient(135deg, #f6f9fc 0%, #eef2f7 100%);
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    overflow: hidden;
+    position: fixed;
+    top: 64px; /* Start below navbar */
+    left: 0;
 }
 
 .profile-title {
-    font-size: 32px;
-    font-weight: bold;
-    margin-bottom: 20px;
-    color: #333;
+    font-size: 2rem;
+    color: #2c5282;
+    margin: 0.5rem 0 1rem 0;
+    font-weight: 600;
+    position: relative;
+    padding-bottom: 0.5rem;
+    text-align: center;
+}
+
+.profile-title::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 60px;
+    height: 4px;
+    background: linear-gradient(90deg, #4a90e2, #2c5282);
+    border-radius: 2px;
 }
 
 .profile-details {
-    text-align: left;
-    margin-bottom: 30px;
+    background: #ffffff;
+    padding: 1.25rem;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    width: 100%;
+    max-width: 600px;
+    position: relative;
+    margin-bottom: 0.75rem;
+    overflow-y: auto;
+    max-height: calc(100vh - 264px); /* Adjusted for navbar height */
+}
+
+.profile-details::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(to right, #4a90e2, #2c5282);
+    border-radius: 12px 12px 0 0;
 }
 
 .profile-label {
     display: flex;
     flex-direction: column;
-    font-size: 16px;
-    margin-bottom: 15px;
-    color: #555;
+    margin-bottom: 0.75rem;
+    gap: 0.25rem;
 }
 
 .profile-label strong {
-    margin-bottom: 5px;
+    color: #2c5282;
+    font-weight: 600;
+    font-size: 1rem;
 }
 
 .editable-input {
-    padding: 8px;
-    font-size: 16px;
-    border: 1px solid #ccc;
-    border-radius: 4px;
+    padding: 0.6rem 0.8rem;
+    border: 2px solid #e2e8f0;
+    border-radius: 6px;
+    font-size: 1rem;
+    outline: none;
+    transition: all 0.3s ease;
+    background-color: #f8fafc;
+    color: #2c5282;
     width: 100%;
-    max-width: 400px;
 }
 
-.back-button, .update-button {
-    padding: 10px 20px;
-    font-size: 16px;
-    line-height: 20px;
-    color: #fff;
-    background-color: #007bff;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    transition: background-color 0.3s ease;
-    display: inline-flex;
-    align-items: center;
+.editable-input:focus {
+    border-color: #4a90e2;
+    box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.1);
+}
+
+.profile-details p {
+    font-size: 1rem;
+    line-height: 1.4;
+    margin-bottom: 0.5rem;
+    color: #4a5568;
+}
+
+.profile-details strong {
+    color: #2c5282;
+    font-weight: 600;
+}
+
+.button-group {
+    display: flex;
+    gap: 1rem;
+    margin-top: 0.75rem;
     justify-content: center;
+    padding-bottom: 0.5rem;
 }
 
-.back-button:hover, .update-button:hover {
-    background-color: #0056b3;
+.back-button,
+.update-button {
+    background-color: #4a90e2;
+    color: white;
+    border: none;
+    padding: 0.7rem 1.2rem;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.back-button svg,
+.update-button svg {
+    width: 18px;
+    height: 18px;
+}
+
+.back-button:hover,
+.update-button:hover {
+    background-color: #2c5282;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
 .update-button {
     background-color: #28a745;
-    margin-left: 20px;
 }
 
 .update-button:hover {
     background-color: #218838;
+}
+
+.loading {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    font-size: 1.2rem;
+    color: #2c5282;
+}
+
+.error {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    font-size: 1.2rem;
+    color: #e53e3e;
+}
+
+@media (max-width: 768px) {
+    .profile-page-container {
+        padding: 0.75rem;
+    }
+
+    .profile-title {
+        font-size: 1.75rem;
+        margin: 0.25rem 0 0.75rem 0;
+    }
+
+    .profile-details {
+        padding: 1rem;
+        max-height: calc(100vh - 180px);
+    }
+
+    .button-group {
+        flex-direction: column;
+        margin-top: 0.5rem;
+    }
+
+    .profile-label {
+        margin-bottom: 0.5rem;
+    }
+
+    .profile-details p {
+        font-size: 0.95rem;
+        margin-bottom: 0.4rem;
+    }
 }

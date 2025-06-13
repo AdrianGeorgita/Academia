@@ -155,19 +155,20 @@ const LectureManagementPage: React.FC = () => {
             });
 
             if (!response.ok) {
-                throw new Error('Failed to update lecture details');
+                const errorBody = await response.json();
+                throw new Error(errorBody.detail || 'Failed to update lecture details');
             }
 
-            alert('Lecture updated successfully');
+            setError("Successfully updated lecture details");
+            //navigate('/dashboard');
         } catch (error) {
             if (error instanceof Error) {
-                alert(error.message);
+                setError(error.message);
             }
         }
     };
 
     if (loading) return <div>Loading...</div>;
-    if (error) return <div>Error: {error}</div>;
     if (!lecture) return <div>No lecture details found!</div>;
 
     return (
@@ -246,11 +247,23 @@ const LectureManagementPage: React.FC = () => {
                         </select>
                     </label>
 
-                    <div className="button-group">
-                        <button className="update-button" onClick={handleSave}>Save Changes</button>
-                        <button className="back-button" onClick={() => navigate('/lectures')}>Cancel</button>
+                    <div className="edit-lecture-button-group">
+                        <button className="edit-lecture-update-button" onClick={handleSave}>
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" strokeLinecap="round" strokeLinejoin="round"/>
+                            </svg>
+                            Save Changes
+                        </button>
+                        <button className="edit-lecture-back-button" onClick={() => navigate('/dashboard/lectures')}>
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M19 12H5M12 19l-7-7 7-7"/>
+                            </svg>
+                            Cancel
+                        </button>
                     </div>
+                    
                 </div>
+                {error && <p className="lecture-management-error">{error}</p>}
             </div>
         </div>
     );

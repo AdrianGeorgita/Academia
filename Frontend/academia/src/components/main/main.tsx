@@ -158,6 +158,10 @@ const MainPage: React.FC = () => {
         navigate(`/lectures/${cod}`, { state: { path } });
     };
 
+    const capitalizeFirstLetter = (str: string) => {
+        return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+    };
+
     if (loading) {
         return <div className="loading">Loading...</div>;
     }
@@ -167,82 +171,85 @@ const MainPage: React.FC = () => {
     }
 
     return (
-        <div className="main-container">
+        <div>
             <NavBar />
-            <h1 className="page-title">Lectures</h1>
+            <div className="main-container">
+                <h1 className="page-title">Lectures</h1>
 
-            {/* Filters Section */}
-            <div className="filters-section">
-                <input
-                    type="text"
-                    placeholder="Search by name"
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                />
-                <input
-                    type="number"
-                    placeholder="Year"
-                    value={year}
-                    onChange={(e) => setYear(e.target.value)}
-                />
-                <select
-                    value={itemsPerPage}
-                    onChange={(e) => setItemsPerPage(Number(e.target.value))}
-                >
-                    <option value="10">10 per page</option>
-                    <option value="20">20 per page</option>
-                    <option value="50">50 per page</option>
-                    <option value="100">100 per page</option>
-                </select>
-                <button onClick={() => fetchLectures(buildApiUrl(home_page_api))}>
-                    Apply Filters
-                </button>
-            </div>
+                {/* Filters Section */}
+                <div className="filters-section">
+                    <input
+                        type="text"
+                        placeholder="Search by name"
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                    />
+                    <input
+                        type="number"
+                        placeholder="Year"
+                        value={year}
+                        onChange={(e) => setYear(e.target.value)}
+                    />
+                    <select
+                        value={itemsPerPage}
+                        onChange={(e) => setItemsPerPage(Number(e.target.value))}
+                    >
+                        <option value="10">10 per page</option>
+                        <option value="20">20 per page</option>
+                        <option value="50">50 per page</option>
+                        <option value="100">100 per page</option>
+                    </select>
+                    <button onClick={() => fetchLectures(buildApiUrl(home_page_api))}>
+                        Apply Filters
+                    </button>
+                </div>
 
-            {noLectures && (
-                <p className="no-lectures-message">No lectures available!</p>
-            )}
+                {noLectures && (
+                    <p className="no-lectures-message">No lectures available!</p>
+                )}
 
-            <ul className="lecture-list">
-                {lectures.map((lecture) => (
-                    <li key={lecture.cod} className="lecture-item">
-                        <h3>
-                            {lecture.nume_disciplina} - {lecture.cod}
-                        </h3>
-                        <p><strong>Year of Study:</strong> {lecture.an_studiu}</p>
-                        <p><strong>Subject Type:</strong> {lecture.tip_disciplina}</p>
-                        <p><strong>Category:</strong> {lecture.categorie_disciplina}</p>
-                        <p><strong>Examination Type:</strong> {lecture.tip_examinare}</p>
+                <ul className="main-lecture-list">
+                    {lectures.map((lecture) => (
+                        <li key={lecture.cod} className="lecture-item">
+                            <div className="lecture-header">
+                                <h3>
+                                    {lecture.nume_disciplina} - {lecture.cod}
+                                    {lecture._links.update && (
+                                        <span className="coordinator-label">
+                                            Coordinator
+                                        </span>
+                                    )}
+                                </h3>
+                            </div>
+                            <p><strong>Year of Study:</strong> {lecture.an_studiu}</p>
+                            <p><strong>Subject Type:</strong> {capitalizeFirstLetter(lecture.tip_disciplina)}</p>
+                            <p><strong>Category:</strong> {capitalizeFirstLetter(lecture.categorie_disciplina)}</p>
+                            <p><strong>Examination Type:</strong> {capitalizeFirstLetter(lecture.tip_examinare)}</p>
 
-                        {lecture._links.update && (
-                            <p className="coordinator-label">
-                                You are the coordinator of this lecture.
-                            </p>
-                        )}
+                            <button
+                                className="view-lecture-button"
+                                onClick={() => handleViewLecture(lecture._links.self.href)}
+                            >
+                                View Lecture
+                            </button>
+                        </li>
+                    ))}
+                </ul>
 
-                        <button
-                            className="view-lecture-button"
-                            onClick={() => handleViewLecture(lecture._links.self.href)}
-                        >
-                            View Lecture
-                        </button>
-                    </li>
-                ))}
-            </ul>
-
-            <div className="pagination-buttons">
-                <button onClick={() => handlePagination(paginationLinks?.first_page?.href || '')} disabled={!paginationLinks?.first_page}>
-                    First
-                </button>
-                <button onClick={() => handlePagination(paginationLinks?.previous_page?.href || '')} disabled={!paginationLinks?.previous_page}>
-                    Previous
-                </button>
-                <button onClick={() => handlePagination(paginationLinks?.next_page?.href || '')} disabled={!paginationLinks?.next_page}>
-                    Next
-                </button>
-                <button onClick={() => handlePagination(paginationLinks?.last_page?.href || '')} disabled={!paginationLinks?.last_page}>
-                    Last
-                </button>
+                <div className="pagination-buttons">
+                    <button onClick={() => handlePagination(paginationLinks?.first_page?.href || '')} disabled={!paginationLinks?.first_page}>
+                        First
+                    </button>
+                    <button onClick={() => handlePagination(paginationLinks?.previous_page?.href || '')} disabled={!paginationLinks?.previous_page}>
+                        Previous
+                    </button>
+                    <button onClick={() => handlePagination(paginationLinks?.next_page?.href || '')} disabled={!paginationLinks?.next_page}>
+                        Next
+                    </button>
+                    <button onClick={() => handlePagination(paginationLinks?.last_page?.href || '')} disabled={!paginationLinks?.last_page}>
+                        Last
+                    </button>
+                </div>
             </div>
         </div>
     );

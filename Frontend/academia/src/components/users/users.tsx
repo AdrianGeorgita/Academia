@@ -164,7 +164,7 @@ const UsersList: React.FC<UsersListProps> = ({ category }) => {
                                     value={degree}
                                     onChange={(e) => setDegree(e.target.value)}
                                 >
-                                    <option value="licenta">Study Cycle</option>
+                                    <option value="">Study Cycle</option>
                                     <option value="licenta">Licenta</option>
                                     <option value="master">Master</option>
                                 </select>
@@ -231,7 +231,13 @@ const UsersList: React.FC<UsersListProps> = ({ category }) => {
                                     to={`/dashboard/${category}/${user.id}`}
                                     state={{apiUrl: user["_links"]["self"].href, lecturesApi: stats?._links.view_lectures}}
                                 >
-                                    <button className="view-profile-btn">View Profile</button>
+                                    <button className="view-profile-btn">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                            <circle cx="12" cy="12" r="3"></circle>
+                                            <path d="M12 5C7 5 2.73 8.11 1 12.5 2.73 16.89 7 20 12 20s9.27-3.11 11-7.5C21.27 8.11 17 5 12 5z"></path>
+                                        </svg>
+                                        View Profile
+                                    </button>
                                 </Link>
                             </li>
                         ))}

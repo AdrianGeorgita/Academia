@@ -13,11 +13,17 @@
     font-weight: bold;
     margin-bottom: 20px;
     color: #333;
+    text-align: center;
 }
 
-.profile-details {
+.create-entity-profile-details {
     text-align: left;
-    margin-bottom: 30px;
+    margin: 0 auto 30px;
+    padding: 25px;
+    background-color: #ffffff;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    max-width: 800px;
 }
 
 .profile-label {
@@ -41,42 +47,107 @@
     max-width: 400px;
 }
 
-.button-group {
-    margin-top: 20px;
-}
-
-.back-button, .update-button {
-    padding: 10px 20px;
-    font-size: 16px;
-    line-height: 20px;
-    color: #fff;
-    background-color: #007bff;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    transition: background-color 0.3s ease;
-    display: inline-flex;
-    align-items: center;
+.create-entity-button-group {
+    display: flex;
     justify-content: center;
+    gap: 1rem;
+    margin-top: 2rem;
+    padding: 0 1rem;
 }
 
-.back-button:hover, .update-button:hover {
-    background-color: #0056b3;
+.create-entity-back-button, 
+.create-entity-update-button {
+    padding: 0.8rem 1.5rem;
+    font-size: 1rem;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    min-width: 160px;
+    justify-content: center;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-.update-button {
+.create-entity-back-button {
+    background-color: #4a90e2;
+}
+
+.create-entity-back-button:hover {
+    background-color: #2c5282;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.create-entity-update-button {
     background-color: #28a745;
-    margin-left: 20px;
 }
 
-.update-button:hover {
+.create-entity-update-button:hover {
     background-color: #218838;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
 }
 
-.error {
-    color: red;
-    font-size: 14px;
-    margin-top: 10px;
+.create-entity-back-button svg,
+.create-entity-update-button svg {
+    width: 20px;
+    height: 20px;
+    transition: transform 0.3s ease;
+}
+
+.create-entity-back-button:hover svg {
+    transform: translateX(-2px);
+}
+
+.create-entity-update-button:hover svg {
+    transform: rotate(15deg);
+}
+
+.create-entity-error {
+    color: #e53e3e;
+    font-size: 0.95rem;
+    margin: 0.75rem auto;
+    padding: 0.75rem 1rem;
+    background-color: #fff5f5;
+    border-radius: 6px;
+    border: 1px solid #feb2b2;
+    max-width: 800px;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.create-entity-error::before {
+    content: '';
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23e53e3e' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'%3E%3C/circle%3E%3Cline x1='12' y1='8' x2='12' y2='12'%3E%3C/line%3E%3Cline x1='12' y1='16' x2='12.01' y2='16'%3E%3C/line%3E%3C/svg%3E");
+    background-size: contain;
+    background-repeat: no-repeat;
+    flex-shrink: 0;
+}
+
+@media (max-width: 768px) {
+    .create-entity-button-group {
+        flex-direction: column;
+        padding: 0;
+    }
+
+    .create-entity-back-button,
+    .create-entity-update-button {
+        width: 100%;
+    }
+
+    .create-entity-error {
+        margin: 0.5rem 0;
+        padding: 0.5rem 0.75rem;
+    }
 }
 
 
